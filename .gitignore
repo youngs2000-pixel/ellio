@@ -1,0 +1,21 @@
+# 비밀 정보 (절대 GitHub에 올리지 않기!)
+.env
+.env.local
+.env*.local
+
+# 의존성 / 빌드 / 도구 폴더
+node_modules/
+.vercel/
+
+# OS / 에디터 부산물
+Thumbs.db
+.DS_Store
+
+# 로컬 도구 설정 (Claude Code 등)
+.claude/
+
+# 기획 원본 문서 & 참고 이미지 (게임 실행에는 불필요 — 공개 저장소에 굳이 안 올림)
+*.docx
+ellio_githubinfo.png
+ellio_vercelinfo.png
+tool-results/

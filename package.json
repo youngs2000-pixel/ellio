@@ -1,0 +1,13 @@
+{
+  "name": "ellio-ww3",
+  "version": "2.0.0",
+  "private": true,
+  "description": "세계 3차 전쟁 v2.0 — 자녀와 함께 만드는 턴제 전략 게임 (오프라인 동작 + 선택적 Gemini 내러티브)",
+  "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "sim": "node sim.js"
+  }
+}

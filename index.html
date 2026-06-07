@@ -1,0 +1,1302 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🌍 세계 3차 전쟁 v2.0</title>
+<style>
+  /* ===================== 기본 스타일 ===================== */
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root{
+    --bg:#0e1726; --panel:#16233b; --panel2:#1d2f4d; --line:#2c456e;
+    --blue:#3a86ff; --skyblue:#7fc8ff; --darkblue:#1d4ed8;
+    --gray:#7b8aa0; --red:#ef4444; --orange:#f59e0b; --purple:#a855f7;
+    --green:#22c55e; --text:#e8eefc; --muted:#9fb0cc;
+  }
+  body{
+    font-family:'Segoe UI','Malgun Gothic',sans-serif;
+    background:radial-gradient(circle at 50% -10%, #1a2c4d, #0e1726 60%);
+    color:var(--text); height:100vh; overflow:hidden; user-select:none;
+  }
+  .screen{ position:absolute; inset:0; display:none; }
+  .screen.active{ display:flex; }
+
+  /* ===================== 시작 / 국가선택 화면 ===================== */
+  #startScreen{ flex-direction:column; align-items:center; justify-content:center; gap:14px; text-align:center; overflow-y:auto; padding:20px; }
+  #startScreen h1{ font-size:48px; letter-spacing:2px; text-shadow:0 0 24px #3a86ff88; }
+  #startScreen .sub{ color:var(--muted); max-width:620px; line-height:1.6; font-size:15px; }
+  .diffRow{ display:flex; gap:10px; }
+  .diffBtn{ background:var(--panel); border:2px solid #2c456e; color:var(--text);
+    padding:10px 16px; border-radius:12px; cursor:pointer; font-size:14px; transition:.15s; }
+  .diffBtn small{ display:block; color:var(--muted); font-size:11px; margin-top:3px; }
+  .diffBtn:hover{ border-color:var(--blue); transform:translateY(-2px); }
+  .diffBtn.selected{ border-color:var(--blue); background:var(--panel2); box-shadow:0 0 16px #3a86ff55; }
+  .bigBtn{ background:linear-gradient(135deg,#3a86ff,#1d4ed8); color:#fff; border:none;
+    padding:14px 42px; border-radius:14px; font-size:20px; font-weight:bold; cursor:pointer;
+    box-shadow:0 6px 20px #1d4ed877; transition:.15s; }
+  .bigBtn:hover{ transform:translateY(-2px) scale(1.03); }
+  .bigBtn:disabled{ opacity:.4; cursor:not-allowed; transform:none; }
+
+  /* 국가 선택 그리드 */
+  #pickGrid{ display:grid; grid-template-columns:repeat(4,1fr); gap:10px; max-width:920px; width:100%; }
+  .pickCard{ background:var(--panel); border:2px solid #2c456e; border-radius:12px; padding:10px 12px;
+    cursor:pointer; transition:.13s; text-align:left; }
+  .pickCard:hover{ border-color:var(--blue); transform:translateY(-2px); }
+  .pickCard.selected{ border-color:#ffd54a; background:var(--panel2); box-shadow:0 0 16px #ffd54a55; }
+  .pickCard .pcName{ font-size:16px; font-weight:bold; }
+  .pickCard .pcRegion{ font-size:11px; color:var(--muted); margin-bottom:5px; }
+  .pickCard .pcStat{ font-size:11px; color:#cfe0ff; line-height:1.5; }
+  .pickCard .pcAbil{ font-size:11px; color:#86efac; margin-top:5px; line-height:1.4; }
+  .pickCard .pcDiff{ font-size:11px; font-weight:bold; margin-top:4px; }
+  .toggleRow{ display:flex; align-items:center; gap:8px; font-size:13px; color:var(--muted); }
+  .switch{ position:relative; width:42px; height:22px; background:#33405c; border-radius:12px; cursor:pointer; transition:.15s; }
+  .switch.on{ background:var(--blue); }
+  .switch .knob{ position:absolute; top:2px; left:2px; width:18px; height:18px; background:#fff; border-radius:50%; transition:.15s; }
+  .switch.on .knob{ left:22px; }
+
+  /* ===================== 게임 화면 ===================== */
+  #gameScreen{ flex-direction:column; }
+  #topbar{ display:flex; align-items:center; gap:14px; padding:7px 14px;
+    background:var(--panel); border-bottom:2px solid #243a5e; flex-wrap:wrap; }
+  .stat{ display:flex; align-items:center; gap:5px; font-size:14px; white-space:nowrap; }
+  .stat b{ font-size:16px; }
+  .spacer{ flex:1; }
+  #tensionWrap{ display:flex; align-items:center; gap:8px; min-width:220px; }
+  #tensionBar{ width:130px; height:14px; background:#0c1422; border-radius:8px; overflow:hidden; border:1px solid #2c456e; }
+  #tensionFill{ height:100%; width:20%; background:linear-gradient(90deg,#22c55e,#f59e0b,#ef4444); transition:width .4s; }
+
+  #main{ flex:1; display:flex; min-height:0; }
+  #mapWrap{ flex:1; position:relative; display:flex; align-items:center; justify-content:center; padding:8px; }
+  #map{ background:#0c1626; border-radius:14px; border:1px solid #233859; box-shadow:inset 0 0 60px #00091a; max-width:100%; max-height:100%; }
+  #side{ width:330px; background:var(--panel); border-left:2px solid #243a5e; display:flex; flex-direction:column; min-height:0; }
+  #side .pad{ padding:10px 12px; overflow-y:auto; flex:1; }
+  .secTitle{ font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; margin:12px 0 5px; border-bottom:1px solid #2a3f63; padding-bottom:3px; }
+  .secTitle:first-child{ margin-top:0; }
+
+  .newsBox{ background:#10203a; border:1px solid #2a4a78; border-radius:10px; padding:8px 10px; font-size:12.5px; line-height:1.5; color:#cfe0ff; }
+  .newsBox b{ color:#7fc8ff; }
+  .stratBox{ background:#1a1430; border:1px solid #4a3a78; border-radius:10px; padding:8px 10px; font-size:12.5px; line-height:1.5; color:#dccfff; }
+
+  #countryName{ font-size:20px; font-weight:bold; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  #countryTag{ font-size:11px; padding:2px 8px; border-radius:10px; font-weight:bold; }
+  .statline{ display:flex; align-items:center; gap:8px; margin:4px 0; font-size:12px; }
+  .statline .lab{ width:42px; color:var(--muted); }
+  .miniBar{ flex:1; height:8px; background:#0c1422; border-radius:6px; overflow:hidden; }
+  .miniFill{ height:100%; border-radius:6px; }
+  .miniVal{ width:38px; text-align:right; font-variant-numeric:tabular-nums; }
+
+  .actBtn{ display:block; width:100%; text-align:left; margin:5px 0; padding:9px 11px;
+    background:var(--panel2); color:var(--text); border:1px solid #34507d; border-radius:10px; cursor:pointer; font-size:13px; transition:.12s; }
+  .actBtn:hover:not(:disabled){ background:#26406b; border-color:var(--blue); }
+  .actBtn .cost{ float:right; color:var(--muted); font-size:11px; }
+  .actBtn:disabled{ opacity:.4; cursor:not-allowed; }
+  .actBtn.attack{ border-color:#7a2b2b; } .actBtn.attack:hover:not(:disabled){ background:#3a1d1d; border-color:var(--red); }
+  .actBtn.ally{ border-color:#2b5a7a; }
+  .actBtn.nuke{ border-color:#6a2b7a; color:#e9d5ff; } .actBtn.nuke:hover:not(:disabled){ background:#2e1a3a; border-color:var(--purple); }
+
+  #endTurnBtn{ margin:8px 12px; padding:13px; font-size:17px; font-weight:bold; border:none; border-radius:12px;
+    background:linear-gradient(135deg,#f59e0b,#d97706); color:#231400; cursor:pointer; transition:.12s; }
+  #endTurnBtn:hover{ transform:translateY(-1px); }
+
+  #log{ height:120px; background:#0b1322; border-top:2px solid #243a5e; overflow-y:auto; padding:6px 14px; font-size:12.5px; line-height:1.55; }
+  #log .entry{ margin:2px 0; padding:2px 8px; border-radius:6px; }
+  #log .turn{ color:var(--muted); border-left:3px solid #3a86ff; padding-left:8px; margin-top:6px; font-weight:bold; }
+  #log .good{ color:#86efac; } #log .bad{ color:#fca5a5; } #log .warn{ color:#fcd34d; }
+  #log .event{ background:#1a2740; color:#cfe0ff; } #log .nukec{ color:#e9b8ff; } #log .region{ color:#9ec5ff; }
+
+  #overlay{ position:absolute; inset:0; background:#06070bdd; display:none; align-items:center; justify-content:center; z-index:50; }
+  #overlay.active{ display:flex; }
+  .card{ background:var(--panel); border:2px solid #34507d; border-radius:18px; padding:26px 36px; text-align:center; max-width:560px; box-shadow:0 10px 50px #000a; max-height:92vh; overflow-y:auto; }
+  .card h2{ font-size:36px; margin-bottom:8px; }
+  .card .scoreLine{ font-size:14px; color:var(--muted); margin:4px 0; }
+  .card .grade{ font-size:58px; font-weight:bold; margin:6px 0; }
+  .card .narr{ font-size:14px; color:#cfe0ff; line-height:1.6; margin:10px 0; background:#10203a; border-radius:10px; padding:10px 12px; }
+
+  @keyframes shake{ 0%,100%{transform:translateX(0)} 25%{transform:translateX(-6px)} 75%{transform:translateX(6px)} }
+  .shake{ animation:shake .35s; }
+  .toast{ position:absolute; top:60px; left:50%; transform:translateX(-50%); background:#1d2f4dEE; border:1px solid #3a86ff;
+    padding:11px 22px; border-radius:12px; font-size:16px; z-index:40; opacity:0; transition:.3s; pointer-events:none; text-align:center; max-width:80%; }
+  .toast.show{ opacity:1; top:74px; }
+  .hint{ color:var(--muted); font-size:12px; line-height:1.5; }
+</style>
+</head>
+<body>
+
+<!-- ===================== 시작 / 국가선택 화면 ===================== -->
+<div id="startScreen" class="screen active">
+  <h1>🌍 세계 3차 전쟁 <span style="font-size:24px;color:var(--skyblue)">v2.0</span></h1>
+  <p class="sub">
+    12개 나라 중 <b style="color:var(--skyblue)">한 나라</b>를 골라 지도자가 되세요.<br>
+    외교·전쟁·자원·기술을 다루어 <b>세계를 하나로</b> 통일하면 승리!<br>
+    하지만 너무 싸우면 모두 지치고(<b style="color:var(--orange)">전쟁 피로도</b>),
+    <b style="color:var(--red)">세계 긴장도</b>가 100이 되면 핵 파국이 옵니다. ☢️
+  </p>
+
+  <div>
+    <div style="color:var(--muted); margin-bottom:6px;">① 난이도</div>
+    <div class="diffRow">
+      <button class="diffBtn" data-diff="easy">😊 쉬움<small>자원 많음 · 적 적음</small></button>
+      <button class="diffBtn selected" data-diff="normal">🙂 보통<small>기본</small></button>
+      <button class="diffBtn" data-diff="hard">😈 어려움<small>자원 적음 · 적 많음</small></button>
+    </div>
+  </div>
+
+  <div style="color:var(--muted); margin-top:4px;">② 플레이할 나라 (카드를 클릭)</div>
+  <div id="pickGrid"></div>
+
+  <div class="toggleRow" style="margin-top:6px;">
+    <span>🤖 AI 내러티브(세계 뉴스·외교 해설)</span>
+    <div class="switch on" id="aiSwitch"><div class="knob"></div></div>
+    <span id="aiSwitchLabel" style="color:#86efac;">켜짐</span>
+  </div>
+  <p class="hint" style="max-width:560px;">※ 인터넷/서버가 없어도 게임은 똑같이 됩니다. AI 내러티브는 글만 더 생생해질 뿐, 켜고 끌 수 있어요.</p>
+
+  <button class="bigBtn" id="startBtn" onclick="startGame()" disabled>나라를 먼저 고르세요 ▶</button>
+</div>
+
+<!-- ===================== 게임 화면 ===================== -->
+<div id="gameScreen" class="screen">
+  <div id="topbar">
+    <div class="stat">🗓️ <b id="turnNum">1</b>턴</div>
+    <div class="stat">💰 <b id="resNum">30</b></div>
+    <div class="stat">⚡ <b id="apNum">2</b></div>
+    <div class="stat">🤝 <b id="allyNum">0</b></div>
+    <div class="stat">🚩 <b id="occNum">0</b></div>
+    <div class="stat">☢️ <b id="nukeNum">0</b></div>
+    <div class="stat">😣 피로 <b id="fatNum">0</b></div>
+    <div class="stat">🌐 <b id="ctrlNum">8</b>%</div>
+    <div class="spacer"></div>
+    <div id="tensionWrap">
+      <span id="tensionIcon">🕛</span> 긴장도
+      <div id="tensionBar"><div id="tensionFill"></div></div>
+      <b id="tensionNum">20</b>
+    </div>
+  </div>
+
+  <div id="main">
+    <div id="mapWrap">
+      <canvas id="map" width="980" height="551"></canvas>
+      <div id="toast" class="toast"></div>
+    </div>
+
+    <div id="side">
+      <div class="pad">
+        <div class="secTitle">📰 세계 뉴스</div>
+        <div class="newsBox" id="newsBox">게임을 시작합니다…</div>
+
+        <div id="noSelect" class="hint" style="margin-top:12px;">👆 지도에서 나라를 클릭하면<br>정보와 행동이 여기에 나와요.</div>
+
+        <div id="countryInfo" style="display:none;">
+          <div class="secTitle">선택한 나라</div>
+          <div id="countryName"></div>
+          <div id="countryAbil" class="pcAbil" style="font-size:11px;margin:4px 0;"></div>
+          <div style="margin:6px 0;">
+            <div class="statline"><span class="lab">🪖 군사</span><div class="miniBar"><div class="miniFill" id="barMil"></div></div><span class="miniVal" id="valMil"></span></div>
+            <div class="statline"><span class="lab">💰 경제</span><div class="miniBar"><div class="miniFill" id="barEco"></div></div><span class="miniVal" id="valEco"></span></div>
+            <div class="statline"><span class="lab">🤝 외교</span><div class="miniBar"><div class="miniFill" id="barDip"></div></div><span class="miniVal" id="valDip"></span></div>
+            <div class="statline"><span class="lab">🔬 기술</span><div class="miniBar"><div class="miniFill" id="barTech"></div></div><span class="miniVal" id="valTech"></span></div>
+            <div class="statline"><span class="lab">🛡️ 방어</span><div class="miniBar"><div class="miniFill" id="barDef"></div></div><span class="miniVal" id="valDef"></span></div>
+            <div class="statline"><span class="lab">😣 피로</span><div class="miniBar"><div class="miniFill" id="barFat"></div></div><span class="miniVal" id="valFat"></span></div>
+          </div>
+          <div id="targetActions"></div>
+        </div>
+
+        <div class="secTitle" id="myTitle">내 나라 강화</div>
+        <button class="actBtn" id="btnMil"  onclick="upgrade('military')">🪖 군사 강화 <span class="cost"></span></button>
+        <button class="actBtn" id="btnEco"  onclick="upgrade('economy')">💰 경제 강화 <span class="cost"></span></button>
+        <button class="actBtn" id="btnDip"  onclick="upgrade('diplomacy')">🕊️ 외교 강화 <span class="cost"></span></button>
+        <button class="actBtn" id="btnTech" onclick="upgrade('technology')">🔬 기술 강화 <span class="cost"></span></button>
+        <button class="actBtn" id="btnDef"  onclick="defenseMode()">🛡️ 방어 태세 <span class="cost"></span></button>
+        <button class="actBtn" id="btnRecover" onclick="recover()">🛠️ 국가 재정비 <span class="cost"></span></button>
+        <button class="actBtn" id="btnPeace" onclick="peaceTalk()">🕊️ 평화 회담 <span class="cost"></span></button>
+        <button class="actBtn nuke" id="btnNukeDev" onclick="developNuke()">☢️ 핵무기 개발 <span class="cost"></span></button>
+
+        <div class="secTitle">🤖 AI 전략 분석</div>
+        <div class="stratBox" id="stratBox">몇 턴 더 진행하면 전략 조언이 나옵니다.</div>
+      </div>
+      <button id="endTurnBtn" onclick="endTurn()">턴 종료 ⏭️</button>
+    </div>
+  </div>
+
+  <div id="log"></div>
+</div>
+
+<div id="overlay"><div class="card" id="resultCard"></div></div>
+
+<script>
+/* =======================================================================
+   세계 3차 전쟁 v2.0 — 게임 로직
+   (초등학생 자녀와 함께 만든 버전 / 주석은 한국어!)
+
+   ⭐ 밸런스 숫자는 거의 다 아래 BAL 한 곳에 모여 있어요.
+      여기 숫자만 바꿔도 게임 난이도/재미를 쉽게 조절할 수 있습니다.
+   ======================================================================= */
+
+/* =====================================================================
+   0. BAL — 밸런스 상수 (여기 숫자만 바꿔 조절!)
+   ===================================================================== */
+const BAL = {
+  STAT_MAX: 1000,            // 모든 능력치 최대값
+  AP_PER_TURN: 2,            // 한 턴 행동 횟수
+
+  // 난이도: 시작자원, AI 공격성, 시작긴장, 긴장상승률, 적국 수
+  diff: {
+    easy:   { startRes:72, aiAggro:0.65, tensionStart:10, tensionRate:0.7, enemies:1, label:"쉬움" },
+    normal: { startRes:56, aiAggro:0.90, tensionStart:15, tensionRate:0.9, enemies:2, label:"보통" },
+    hard:   { startRes:52, aiAggro:1.08, tensionStart:18, tensionRate:1.05, enemies:3, label:"어려움" },
+  },
+
+  // 행동 비용 (자원)
+  cost: { alliance:10, occupation:12, defense:8, recover:18, spy:22, sanction:28, peace:22, reinforce:18, nukeDev:120 },
+
+  // 능력치 강화: 비용 = costBase + 레벨*costStep,  성장량은 1000에 가까울수록 감소
+  upgrade: {
+    military:   { costBase:12, costStep:3, gainStep:70 },
+    economy:    { costBase:14, costStep:4, gainStep:60 },
+    diplomacy:  { costBase:12, costStep:3, gainStep:60 },
+    technology: { costBase:16, costStep:4, gainStep:70 },
+  },
+
+  // 자원 획득
+  res: { base:16, perEconomy:32, perAlly:6, perOcc:3 },
+
+  // 동맹/점령 성공률 계수
+  ally: { base:46, dipMul:0.05, resistMul:0.5, spyBonus:10, fatiguePenalty:0.2 },
+  occ:  { base:52, scale:10, techMul:0.4, defenseActiveBonus:150, spyBonus:60, fatiguePenalty:0.25, nukeBonus:25 },
+
+  // 전쟁 피로도
+  fatigue: { occWin:6, occLose:12, useNuke:20, devNuke:5, recoverDown:20, sanctionTarget:10 },
+
+  // 전쟁 소모(%) [최소, 최대]
+  attrition: {
+    atkWin:  { mil:[4,9],   res:[5,10] },
+    atkLose: { mil:[10,18], res:[8,15] },
+    defLost: { mil:[15,25], eco:[5,15] },   // 방어자가 점령당함
+    defHeld: { mil:[3,8],   eco:[2,5] },    // 방어자가 막아냄
+  },
+
+  // 핵무기
+  nuke: { techReq:700, resReq:120, tensionReq:40, ap:2,
+    devTension:12, devDip:30,
+    useMil:[25,40], useEco:[15,30], useDef:[20,35],
+    useTension:30, useDip:100, useNeutralResist:50, pressureTurns:2 },
+
+  // 세계 파국 위기
+  crisis: { countdown:3, autoRise:5, escapeTension:80,
+    trigTension:100, trigNukeUsed:3, trigTotalNukes:6, trigHoldStreak:3 },
+
+  // 긴장도 변화량
+  tension: { allyDown:2, allyFailUp:1, occUp:4, occFailUp:6, defenseDown:1,
+    sanctionUp:5, peaceDown:10, recoverDown:3, aiAttackUp:3 },
+
+  // 후반 단계
+  late: { endgameAt:0.7, resistDefenseUp:100, resistResistUp:30 },
+
+  // 점수
+  score: { ally:200, occ:150, region:300, res:3, tech:2, eco:2, turn:30, tension:10, nukeUsed:500, fatigue:5,
+    S:6000, A:4500, B:3000, C:1500, peacefulAllyRatio:0.6 },
+};
+
+/* =====================================================================
+   1. 나라(국가) 데이터 — 능력치는 1~1000 스케일
+   region: asia / europe / africa / america
+   mods : 국가 고유 능력 (값을 곱하거나 더함)
+   ai   : AI가 잡았을 때 행동 성향 (공격/외교/핵 선호)
+   fx,fy: map.png 위에서의 위치 비율(0~1). 지도가 바뀌면 이 숫자만 조절!
+   ===================================================================== */
+const COUNTRY_DATA = [
+  { id:"korea", name:"대한민국", emoji:"🇰🇷", region:"asia",
+    military:380, economy:420, diplomacy:360, technology:480, defense:360, resistance:25,
+    diffLabel:"보통", fx:0.845, fy:0.37,
+    desc:"기술 강국. 방어와 기술에 강점.",
+    mods:{ techCostMul:0.8, nukeTechReq:600 },
+    ai:{ aggr:0.4, dip:0.6, nuke:0.3 } },
+
+  { id:"china", name:"중국", emoji:"🇨🇳", region:"asia",
+    military:560, economy:540, diplomacy:320, technology:420, defense:420, resistance:42,
+    diffLabel:"쉬움", fx:0.78, fy:0.35,
+    desc:"군사·경제 강국. 빠르게 확장하고 긴장을 높임.",
+    mods:{ milUpMul:1.2, warFatigueGainMul:1.1 },
+    ai:{ aggr:0.85, dip:0.3, nuke:0.5 } },
+
+  { id:"usa", name:"미국", emoji:"🇺🇸", region:"america",
+    military:600, economy:600, diplomacy:480, technology:580, defense:450, resistance:45,
+    diffLabel:"쉬움", fx:0.17, fy:0.37,
+    desc:"초강대국. 모든 능력이 강하고 핵 개발이 빠름.",
+    mods:{ startResBonus:50, nukeCostMul:0.8 },
+    ai:{ aggr:0.7, dip:0.5, nuke:0.7 } },
+
+  { id:"uk", name:"영국", emoji:"🇬🇧", region:"europe",
+    military:360, economy:460, diplomacy:560, technology:480, defense:380, resistance:30,
+    diffLabel:"보통", fx:0.455, fy:0.285,
+    desc:"외교 강국. 동맹과 평화 회담에 능함.",
+    mods:{ allyBonus:10, peaceMul:1.5 },
+    ai:{ aggr:0.35, dip:0.8, nuke:0.3 } },
+
+  { id:"france", name:"프랑스", emoji:"🇫🇷", region:"europe",
+    military:420, economy:440, diplomacy:480, technology:460, defense:400, resistance:30,
+    diffLabel:"보통", fx:0.485, fy:0.325,
+    desc:"균형형. 전쟁 후 회복이 빠름.",
+    mods:{ recoverMul:1.2 },
+    ai:{ aggr:0.5, dip:0.6, nuke:0.3 } },
+
+  { id:"australia", name:"오스트레일리아", emoji:"🇦🇺", region:"asia",
+    military:300, economy:420, diplomacy:380, technology:420, defense:520, resistance:28,
+    diffLabel:"보통~어려움", fx:0.885, fy:0.74,
+    desc:"방어 거점. 공격받기 어렵고 안정적.",
+    mods:{ defenseModeMul:1.3 },
+    ai:{ aggr:0.3, dip:0.5, nuke:0.2 } },
+
+  { id:"nz", name:"뉴질랜드", emoji:"🇳🇿", region:"asia",
+    military:220, economy:360, diplomacy:480, technology:380, defense:360, resistance:22,
+    diffLabel:"어려움", fx:0.955, fy:0.80,
+    desc:"평화 외교. 긴장 완화에 강하지만 핵 개발은 비쌈.",
+    mods:{ tensionReduceMul:1.3, nukeCostMul:1.3 },
+    ai:{ aggr:0.2, dip:0.85, nuke:0.1 } },
+
+  { id:"congo", name:"콩고민주공화국", emoji:"🇨🇩", region:"africa",
+    military:240, economy:300, diplomacy:280, technology:220, defense:240, resistance:20,
+    diffLabel:"어려움", fx:0.525, fy:0.575,
+    desc:"자원 잠재력 큼. 경제 성장 효과가 큼.",
+    mods:{ ecoUpMul:1.25 },
+    ai:{ aggr:0.4, dip:0.4, nuke:0.2 } },
+
+  { id:"southafrica", name:"남아프리카공화국", emoji:"🇿🇦", region:"africa",
+    military:340, economy:380, diplomacy:380, technology:340, defense:360, resistance:26,
+    diffLabel:"보통~어려움", fx:0.55, fy:0.72,
+    desc:"지역 균형자. 경제·군사 균형형.",
+    mods:{ africaAllyBonus:15 },
+    ai:{ aggr:0.45, dip:0.55, nuke:0.2 } },
+
+  { id:"canada", name:"캐나다", emoji:"🇨🇦", region:"america",
+    military:320, economy:480, diplomacy:500, technology:460, defense:380, resistance:28,
+    diffLabel:"보통", fx:0.18, fy:0.25,
+    desc:"안정적 동맹. 외교·경제가 높음.",
+    mods:{ allyBonus:6, defenseModeMul:1.15 },
+    ai:{ aggr:0.3, dip:0.7, nuke:0.2 } },
+
+  { id:"brazil", name:"브라질", emoji:"🇧🇷", region:"america",
+    military:320, economy:420, diplomacy:360, technology:340, defense:360, resistance:26,
+    diffLabel:"보통~어려움", fx:0.305, fy:0.61,
+    desc:"성장 잠재력 큼. 시간이 지날수록 경제가 강해짐.",
+    mods:{ lateEcoBonus:true },
+    ai:{ aggr:0.45, dip:0.5, nuke:0.2 } },
+
+  { id:"argentina", name:"아르헨티나", emoji:"🇦🇷", region:"america",
+    military:260, economy:320, diplomacy:320, technology:300, defense:320, resistance:24,
+    diffLabel:"어려움", fx:0.275, fy:0.75,
+    desc:"저비용 성장. 시작은 약하지만 강화 비용이 쌈.",
+    mods:{ allCostMul:0.9 },
+    ai:{ aggr:0.4, dip:0.5, nuke:0.2 } },
+];
+
+const REGIONS = {
+  asia:    { name:"아시아·오세아니아", emoji:"🌏", ids:["korea","china","australia","nz"] },
+  europe:  { name:"유럽",            emoji:"🇪🇺", ids:["uk","france"] },
+  africa:  { name:"아프리카",        emoji:"🌍", ids:["congo","southafrica"] },
+  america: { name:"아메리카",        emoji:"🌎", ids:["usa","canada","brazil","argentina"] },
+};
+
+/* =====================================================================
+   2. 게임 상태
+   ===================================================================== */
+let countries = [];
+let game = {};
+let hoverId = null;
+let busy = false;       // AI 처리 중 클릭 막기
+let chosenDiff = "normal";
+let chosenCountry = null;
+
+/* =====================================================================
+   3. 효과음 (Web Audio API로 직접 만들기 — 외부 파일 불필요)
+   ===================================================================== */
+let actx = null;
+function audio(){ if(!actx) actx = new (window.AudioContext||window.webkitAudioContext)(); return actx; }
+function beep(freq, dur, type="square", vol=0.15, slideTo=null){
+  try{
+    const a=audio(); const o=a.createOscillator(); const g=a.createGain();
+    o.type=type; o.frequency.value=freq;
+    if(slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, a.currentTime+dur);
+    g.gain.value=vol; g.gain.exponentialRampToValueAtTime(0.001, a.currentTime+dur);
+    o.connect(g); g.connect(a.destination); o.start(); o.stop(a.currentTime+dur);
+  }catch(e){}
+}
+const SFX = {
+  click: ()=>beep(420,0.06,"square",0.08),
+  good:  ()=>{ beep(660,0.1,"sine",0.15); setTimeout(()=>beep(880,0.14,"sine",0.15),90); },
+  bad:   ()=>beep(180,0.3,"sawtooth",0.18,80),
+  attack:()=>{ beep(120,0.18,"sawtooth",0.22,40); setTimeout(()=>beep(90,0.25,"square",0.2,30),120); },
+  nuke:  ()=>{ beep(70,0.5,"sawtooth",0.25,30); setTimeout(()=>beep(50,0.6,"square",0.22,20),200); },
+  alarm: ()=>{ beep(800,0.18,"sawtooth",0.2,500); setTimeout(()=>beep(800,0.18,"sawtooth",0.2,500),250); },
+  win:   ()=>{ [523,659,784,1047].forEach((f,i)=>setTimeout(()=>beep(f,0.22,"sine",0.18),i*140)); },
+  lose:  ()=>{ [400,300,200,120].forEach((f,i)=>setTimeout(()=>beep(f,0.3,"sawtooth",0.18),i*180)); },
+};
+
+/* =====================================================================
+   4. 작은 헬퍼들
+   ===================================================================== */
+const me = ()=>countries.find(c=>c.id===game.playerId);
+const byId = (id)=>countries.find(c=>c.id===id);
+const isMine = (c)=>["player","ally","occupied"].includes(c.status);
+const isEnemy = (c)=>["enemy","enemyAlly"].includes(c.status);
+const rnd = (n)=>Math.random()*n;
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const cap = (v)=>clamp(Math.round(v),1,BAL.STAT_MAX);   // 능력치 1~1000으로 자르기
+const eff = (c)=>c.military*(1 - c.warFatigue/200);     // 전쟁 피로도 반영 실질 군사력
+const totalStat = (c)=>c.military+c.economy+c.diplomacy+c.technology;
+const myMods = ()=> me().mods || {};
+// 능력치 강화 성장량: 1000에 가까울수록 적게 오름(최소 3)
+function growGain(cur, step){ return Math.max(3, Math.round(step*(1 - cur/1100))); }
+
+/* =====================================================================
+   5. 시작화면: 난이도 / 국가선택 / AI토글
+   ===================================================================== */
+function buildPickGrid(){
+  const grid=document.getElementById('pickGrid'); grid.innerHTML='';
+  const diffColor={ "쉬움":"#86efac", "보통":"#7fc8ff", "보통~어려움":"#fcd34d", "어려움":"#fca5a5" };
+  COUNTRY_DATA.forEach(c=>{
+    const d=document.createElement('div'); d.className='pickCard'; d.dataset.id=c.id;
+    d.innerHTML=`<div class="pcName">${c.emoji} ${c.name}</div>
+      <div class="pcRegion">${REGIONS[c.region].emoji} ${REGIONS[c.region].name}</div>
+      <div class="pcStat">🪖${c.military} 💰${c.economy}<br>🤝${c.diplomacy} 🔬${c.technology}</div>
+      <div class="pcAbil">⭐ ${c.desc}</div>
+      <div class="pcDiff" style="color:${diffColor[c.diffLabel]||'#fff'}">난이도: ${c.diffLabel}</div>`;
+    d.onclick=()=>{
+      document.querySelectorAll('.pickCard').forEach(x=>x.classList.remove('selected'));
+      d.classList.add('selected'); chosenCountry=c.id; SFX.click();
+      const btn=document.getElementById('startBtn'); btn.disabled=false; btn.textContent=`${c.emoji} ${c.name} (으)로 시작 ▶`;
+    };
+    grid.appendChild(d);
+  });
+}
+document.querySelectorAll('.diffBtn').forEach(b=>{
+  b.onclick=()=>{ document.querySelectorAll('.diffBtn').forEach(x=>x.classList.remove('selected'));
+    b.classList.add('selected'); chosenDiff=b.dataset.diff; SFX.click(); };
+});
+document.getElementById('aiSwitch').onclick=function(){
+  this.classList.toggle('on'); const on=this.classList.contains('on');
+  AI.enabled=on; const lab=document.getElementById('aiSwitchLabel');
+  lab.textContent=on?'켜짐':'꺼짐'; lab.style.color=on?'#86efac':'#fca5a5'; SFX.click();
+};
+buildPickGrid();
+
+/* =====================================================================
+   6. 게임 시작 — 플레이어/적/중립 배치
+   ===================================================================== */
+function startGame(){
+  if(!chosenCountry){ return; }
+  SFX.click();
+  busy=false;
+  const d=BAL.diff[chosenDiff];
+
+  // 나라 데이터 깊은 복사 + v2.0 상태 필드 추가
+  countries = COUNTRY_DATA.map(c=>({ ...c, mods:{...c.mods}, ai:{...c.ai},
+    status:"neutral", warFatigue:0, nukes:0, defenseActive:false, defenseBonus:false,
+    spied:false, nukePressured:0, reinforced:false }));
+
+  // 플레이어 지정
+  const player=byId(chosenCountry); player.status="player";
+
+  // 가장 강한 나라들 중 일부를 적국으로 (나머지는 중립)
+  const others=countries.filter(c=>c.id!==chosenCountry).sort((a,b)=>totalStat(b)-totalStat(a));
+  for(let i=0;i<d.enemies && i<others.length;i++) others[i].status="enemy";
+
+  // 미국 시작자원 보너스 등 고유능력
+  let startRes=d.startRes + (player.mods.startResBonus||0);
+
+  game = {
+    playerId:chosenCountry, turn:1, resources:startRes, actionPoints:BAL.AP_PER_TURN,
+    tension:d.tensionStart, selectedId:null, diff:chosenDiff,
+    lv:{military:0, economy:0, diplomacy:0, technology:0},
+    allianceBonus:0, resPenalty:0, peaceShield:false,
+    crisis:false, crisisCount:0, holdStreak:0,
+    endgame:false, resistCoalition:false, over:false,
+    nukesCreated:0, nukesUsed:0, warCount:0,
+    regions:{ asia:false, europe:false, africa:false, america:false }, regionCount:0,
+    recent:[], newsTurn:-1, stratTurn:-99,
+  };
+
+  document.getElementById('startScreen').classList.remove('active');
+  document.getElementById('gameScreen').classList.add('active');
+  document.getElementById('overlay').classList.remove('active');
+  document.getElementById('log').innerHTML='';
+  document.getElementById('myTitle').textContent=`내 나라 강화 (${player.name})`;
+  logTurn(1);
+  log(`${player.emoji} <b>${player.name}</b>의 지도자가 되었습니다! (난이도: ${d.label})`,'good');
+  log(`⭐ 고유 능력: ${player.desc}`,'good');
+  log(`목표: 모든 나라를 동맹/점령해 세계를 통일하세요. 너무 싸우면 모두 지칩니다(전쟁 피로도)!`,'warn');
+  const enemyNames=countries.filter(isEnemy).map(c=>c.name).join(', ');
+  log(`⚠️ 이번 판의 강대국 적: ${enemyNames}`,'bad');
+
+  refreshNews(true);
+  render(); updateUI();
+}
+
+/* =====================================================================
+   7. 로그 / 토스트 / 흔들림
+   ===================================================================== */
+function log(msg, cls=''){
+  const el=document.getElementById('log');
+  const d=document.createElement('div'); d.className='entry '+cls; d.innerHTML=msg;
+  el.appendChild(d); el.scrollTop=el.scrollHeight;
+  // 뉴스 payload용 최근 사건 기록(태그 제거한 짧은 텍스트)
+  if(game.recent){ game.recent.push(msg.replace(/<[^>]+>/g,'')); if(game.recent.length>6) game.recent.shift(); }
+}
+function logTurn(n){ log(`━━━ ${n}턴 ━━━`,'turn'); }
+function toast(msg){
+  const t=document.getElementById('toast'); t.innerHTML=msg; t.classList.add('show');
+  clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),1700);
+}
+function shakeMap(){ const m=document.getElementById('map'); m.classList.remove('shake'); void m.offsetWidth; m.classList.add('shake'); }
+
+/* =====================================================================
+   8. 긴장도 / 자원 / 지역 보너스
+   ===================================================================== */
+function addTension(amount){
+  if(amount>0) amount*=BAL.diff[game.diff].tensionRate;
+  if(amount<0){ const m=myMods().tensionReduceMul||1; amount*=m; } // 긴장 완화 보너스 국가
+  game.tension=clamp(game.tension+amount,0,100);
+}
+function resourceGain(){
+  const m=me();
+  const allies=countries.filter(c=>c.status==="ally").length;
+  const occ=countries.filter(c=>c.status==="occupied").length;
+  let gain = BAL.res.base + Math.floor(m.economy/BAL.res.perEconomy) + allies*BAL.res.perAlly + occ*BAL.res.perOcc;
+  if(game.regions.asia) gain+=10;
+  if(game.regions.africa) gain+=15;
+  gain = Math.round(gain*(1 - m.warFatigue/200));       // 피로도가 높으면 생산 감소
+  if(game.endgame) gain=Math.floor(gain*0.9);
+  return Math.max(2,gain);
+}
+function upgradeCostMul(kind){
+  let mul=1;
+  if(myMods().allCostMul) mul*=myMods().allCostMul;
+  if(kind==="technology" && myMods().techCostMul) mul*=myMods().techCostMul;
+  if(game.regions.africa) mul*=0.9;            // 아프리카 통합: 강화비용 -10%
+  return mul;
+}
+function checkRegions(){
+  let cnt=0;
+  for(const key in REGIONS){
+    const ids=REGIONS[key].ids;
+    const done=ids.every(id=>isMine(byId(id)));
+    cnt += done?1:0;
+    if(done && !game.regions[key]){
+      game.regions[key]=true;
+      applyRegionBonus(key);
+    }
+  }
+  game.regionCount=Object.values(game.regions).filter(Boolean).length;
+}
+function applyRegionBonus(key){
+  const m=me(); const r=REGIONS[key];
+  if(key==="asia"){ m.technology=cap(m.technology+50); }
+  if(key==="europe"){ m.diplomacy=cap(m.diplomacy+60); }
+  if(key==="america"){ m.military=cap(m.military+70); m.defense=cap(m.defense+50); }
+  // africa는 매턴 자원/비용 보너스(자원계산에서 처리)
+  SFX.good();
+  log(`${r.emoji} <b>${r.name} 지역 통합!</b> 지역 보너스를 얻었습니다.`,'region');
+  toast(`${r.emoji} ${r.name} 통합 보너스!`);
+}
+
+/* =====================================================================
+   9. 지도 그리기 (map.png 배경 + 국가 마커, 없으면 fallback)
+   ===================================================================== */
+const canvas=document.getElementById('map');
+const ctx=canvas.getContext('2d');
+const STATUS_COLOR={ player:'#3a86ff', ally:'#7fc8ff', occupied:'#1d4ed8',
+  neutral:'#7b8aa0', enemy:'#ef4444', enemyAlly:'#f59e0b' };
+const STATUS_LABEL={ player:'내 나라', ally:'동맹국', occupied:'점령지',
+  neutral:'중립국', enemy:'적국', enemyAlly:'적의 동맹' };
+const R=24; // 마커 반지름
+const mapImg=new Image(); let mapReady=false, mapFailed=false;
+mapImg.onload=()=>{ mapReady=true; }; mapImg.onerror=()=>{ mapFailed=true; };
+mapImg.src="map.png";
+const px=(c)=>({ x:c.fx*canvas.width, y:c.fy*canvas.height });
+
+let pulse=0;
+function render(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  // 배경
+  if(mapReady){
+    ctx.drawImage(mapImg,0,0,canvas.width,canvas.height);
+    ctx.fillStyle="rgba(8,16,30,0.55)"; ctx.fillRect(0,0,canvas.width,canvas.height); // 어둡게
+  }else{
+    ctx.strokeStyle='#13233b'; ctx.lineWidth=1;
+    for(let x=0;x<canvas.width;x+=40){ ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,canvas.height);ctx.stroke(); }
+    for(let y=0;y<canvas.height;y+=40){ ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(canvas.width,y);ctx.stroke(); }
+  }
+  pulse=(pulse+0.05)%(Math.PI*2);
+
+  // 마커
+  countries.forEach(c=>{
+    const p=px(c);
+    let col=STATUS_COLOR[c.status];
+    const nukeThreat=(c.nukePressured>0 || (isEnemy(c)&&c.nukes>0));
+    const selected=(c.id===game.selectedId), hovered=(c.id===hoverId);
+    let r=R + (selected?4:0) + (hovered?2:0);
+    ctx.save();
+    if(nukeThreat){ // 핵 위협: 보라 깜빡임
+      col = (Math.sin(pulse*3)>0)?'#a855f7':col;
+      ctx.shadowColor='#a855f7'; ctx.shadowBlur=14+Math.sin(pulse*3)*8;
+    } else if(selected){ ctx.shadowColor=col; ctx.shadowBlur=16+Math.sin(pulse)*8; }
+    // 원
+    ctx.beginPath(); ctx.arc(p.x,p.y,r,0,Math.PI*2);
+    const grad=ctx.createRadialGradient(p.x,p.y-r*0.4,2,p.x,p.y,r);
+    grad.addColorStop(0,shade(col,30)); grad.addColorStop(1,shade(col,-30));
+    ctx.fillStyle=grad; ctx.fill();
+    ctx.restore();
+    ctx.lineWidth=selected?4:(hovered?3:2);
+    ctx.strokeStyle=selected?'#fff':(hovered?'#dbe7ff':shade(col,-50));
+    ctx.beginPath(); ctx.arc(p.x,p.y,r,0,Math.PI*2); ctx.stroke();
+    // 이모지 + 군사력
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.font='16px Segoe UI, Malgun Gothic'; ctx.fillStyle='#fff';
+    ctx.fillText(c.emoji, p.x, p.y-5);
+    ctx.font='bold 11px Segoe UI, Malgun Gothic'; ctx.fillStyle='#f0f4ff';
+    ctx.fillText('🪖'+Math.round(c.military), p.x, p.y+9);
+    // 이름표(아래)
+    ctx.font='bold 12px Segoe UI, Malgun Gothic';
+    const name=c.name.length>6?c.name.slice(0,5)+'…':c.name;
+    const tw=ctx.measureText(name).width+10;
+    ctx.fillStyle='#06101fcc'; roundRect(p.x-tw/2, p.y+r+3, tw, 16, 8); ctx.fill();
+    ctx.fillStyle='#e8eefc'; ctx.fillText(name, p.x, p.y+r+11);
+    // 핵 보유 표시
+    if(c.nukes>0){ ctx.font='12px Segoe UI'; ctx.fillText('☢️'.repeat(Math.min(c.nukes,3)), p.x, p.y-r-8); }
+  });
+}
+function roundRect(x,y,w,h,r){
+  ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath();
+}
+function shade(hex,amt){
+  let c=hex.replace('#',''); if(c.length===3)c=c.split('').map(x=>x+x).join('');
+  let r=clamp(parseInt(c.substr(0,2),16)+amt,0,255);
+  let g=clamp(parseInt(c.substr(2,2),16)+amt,0,255);
+  let b=clamp(parseInt(c.substr(4,2),16)+amt,0,255);
+  return `rgb(${r|0},${g|0},${b|0})`;
+}
+(function loop(){ if(document.getElementById('gameScreen').classList.contains('active')) render(); requestAnimationFrame(loop); })();
+
+/* 지도 클릭/호버 */
+function hitTest(mx,my){
+  let best=null,bd=R*R*1.6;
+  for(const c of countries){ const p=px(c); const d=(mx-p.x)**2+(my-p.y)**2; if(d<bd){ bd=d; best=c; } }
+  return best;
+}
+function canvasPos(e){ const r=canvas.getBoundingClientRect();
+  return { x:(e.clientX-r.left)*(canvas.width/r.width), y:(e.clientY-r.top)*(canvas.height/r.height) }; }
+canvas.addEventListener('mousemove',e=>{ const p=canvasPos(e); const c=hitTest(p.x,p.y);
+  hoverId=c?c.id:null; canvas.style.cursor=c?'pointer':'default'; });
+canvas.addEventListener('click',e=>{ if(busy||game.over) return; const p=canvasPos(e); const c=hitTest(p.x,p.y);
+  if(c){ game.selectedId=c.id; SFX.click(); updateUI(); } });
+
+/* =====================================================================
+   10. UI 갱신
+   ===================================================================== */
+function updateUI(){
+  const m=me();
+  const ally=countries.filter(c=>c.status==="ally").length;
+  const occ=countries.filter(c=>c.status==="occupied").length;
+  const mineCnt=countries.filter(isMine).length;
+  document.getElementById('turnNum').textContent=game.turn;
+  document.getElementById('resNum').textContent=game.resources;
+  document.getElementById('apNum').textContent=game.actionPoints;
+  document.getElementById('allyNum').textContent=ally;
+  document.getElementById('occNum').textContent=occ;
+  document.getElementById('nukeNum').textContent=m.nukes;
+  document.getElementById('fatNum').textContent=Math.round(m.warFatigue);
+  document.getElementById('ctrlNum').textContent=Math.round(mineCnt/countries.length*100);
+
+  const t=Math.round(game.tension);
+  document.getElementById('tensionNum').textContent = game.crisis?`${t} ☢️${game.crisisCount}턴`:t;
+  document.getElementById('tensionFill').style.width=t+'%';
+  document.getElementById('tensionIcon').textContent = game.crisis?'☢️':(t>70?'🕚':'🕛');
+
+  // 내 나라 강화 버튼 비용/활성화
+  const c=actionCosts();
+  setCost('btnMil',c.military); setCost('btnEco',c.economy); setCost('btnDip',c.diplomacy); setCost('btnTech',c.technology);
+  setCostText('btnDef', `${c.defense} · 긴장↓`);
+  setCostText('btnRecover', `${c.recover} · 피로↓`);
+  setCostText('btnPeace', `${c.peace} · 긴장↓`);
+  setCostText('btnNukeDev', `${c.nukeDev} · 기술${nukeTechReq()}↑`);
+  const ap=game.actionPoints;
+  document.getElementById('btnMil').disabled  = ap<1||game.resources<c.military;
+  document.getElementById('btnEco').disabled  = ap<1||game.resources<c.economy;
+  document.getElementById('btnDip').disabled  = ap<1||game.resources<c.diplomacy;
+  document.getElementById('btnTech').disabled = ap<1||game.resources<c.technology;
+  document.getElementById('btnDef').disabled  = ap<1||game.resources<c.defense||m.defenseActive;
+  document.getElementById('btnRecover').disabled = ap<1||game.resources<c.recover;
+  document.getElementById('btnPeace').disabled = ap<1||game.resources<c.peace;
+  document.getElementById('btnNukeDev').disabled = ap<BAL.nuke.ap||game.resources<c.nukeDev||m.technology<nukeTechReq()||game.tension<BAL.nuke.tensionReq;
+
+  // 선택 국가 패널
+  const sel=game.selectedId?byId(game.selectedId):null;
+  document.getElementById('noSelect').style.display=sel?'none':'block';
+  document.getElementById('countryInfo').style.display=sel?'block':'none';
+  if(sel){
+    const showSecret = isMine(sel)||sel.spied;     // 첩보했거나 내 편이면 자세히
+    document.getElementById('countryName').innerHTML=
+      `${sel.emoji} ${sel.name} <span id="countryTag" style="background:${STATUS_COLOR[sel.status]};color:#06101f;">${STATUS_LABEL[sel.status]}</span>`
+      + ` <span class="hint">${REGIONS[sel.region].emoji}${REGIONS[sel.region].name}</span>`;
+    document.getElementById('countryAbil').textContent = `⭐ ${sel.desc}` + (showSecret&&sel.nukes>0?`  ☢️핵 ${sel.nukes}개 보유`:'');
+    setBar('Mil',sel.military,'#ef6a6a'); setBar('Eco',sel.economy,'#f5c542');
+    setBar('Dip',sel.diplomacy,'#7fc8ff'); setBar('Tech',sel.technology,'#a78bfa');
+    setBar('Def',sel.defense,'#4ade80'); setBar('Fat',sel.warFatigue,'#fb923c',100);
+    document.getElementById('targetActions').innerHTML=targetActionHTML(sel);
+  }
+}
+function actionCosts(){
+  const lv=game.lv, U=BAL.upgrade;
+  const cm=(k)=>upgradeCostMul(k);
+  const allMul = myMods().allCostMul||1;
+  return {
+    military:  Math.round((U.military.costBase+lv.military*U.military.costStep)*cm('military')),
+    economy:   Math.round((U.economy.costBase+lv.economy*U.economy.costStep)*cm('economy')),
+    diplomacy: Math.round((U.diplomacy.costBase+lv.diplomacy*U.diplomacy.costStep)*cm('diplomacy')),
+    technology:Math.round((U.technology.costBase+lv.technology*U.technology.costStep)*cm('technology')),
+    defense: Math.round(BAL.cost.defense*allMul),
+    recover: Math.round(BAL.cost.recover*allMul),
+    peace:   Math.round(BAL.cost.peace*allMul),
+    spy:     Math.round(BAL.cost.spy*allMul),
+    sanction:Math.round(BAL.cost.sanction*allMul),
+    reinforce:Math.round(BAL.cost.reinforce*allMul),
+    alliance:Math.round(BAL.cost.alliance*allMul),
+    occupation:Math.round(BAL.cost.occupation*allMul),
+    nukeDev: Math.round(BAL.cost.nukeDev*(myMods().nukeCostMul||1)*allMul),
+  };
+}
+function nukeTechReq(){ return myMods().nukeTechReq || BAL.nuke.techReq; }
+function setCost(id,c){ document.querySelector('#'+id+' .cost').textContent=c; }
+function setCostText(id,txt){ document.querySelector('#'+id+' .cost').textContent=txt; }
+function setBar(k,v,color,max){ const mx=max||BAL.STAT_MAX;
+  document.getElementById('bar'+k).style.width=clamp(v/mx*100,0,100)+'%';
+  document.getElementById('bar'+k).style.background=color;
+  document.getElementById('val'+k).textContent=Math.round(v);
+}
+function targetActionHTML(c){
+  if(c.status==="player") return `<div class="hint" style="margin-top:6px;">여기는 우리나라예요! 아래에서 키워보세요. 💪</div>`;
+  const C=actionCosts(); const ap=game.actionPoints; let html='';
+  if(isMine(c)){
+    html=`<div class="secTitle">${c.name} (우리 편)</div>`;
+    if(c.status==="ally"||c.status==="occupied"){
+      const dis=(ap<1||game.resources<C.reinforce||c.reinforced)?'disabled':'';
+      html+=`<button class="actBtn ally" ${dis} onclick="reinforceAlly('${c.id}')">🛡️ 동맹 강화 <span class="cost">${C.reinforce} · 방어↑</span></button>`;
+    }
+    return html;
+  }
+  html=`<div class="secTitle">${c.name}에게 할 행동</div>`;
+  if(c.status==="neutral"||c.status==="enemyAlly"){
+    const dis=(ap<1||game.resources<C.alliance)?'disabled':'';
+    html+=`<button class="actBtn ally" ${dis} onclick="attemptAlliance('${c.id}')">🤝 동맹 시도 <span class="cost">${C.alliance} · 긴장↓</span></button>`;
+  }
+  { const dis=(ap<1||game.resources<C.occupation)?'disabled':'';
+    html+=`<button class="actBtn attack" ${dis} onclick="attemptOccupation('${c.id}')">⚔️ 점령 시도 <span class="cost">${C.occupation} · 긴장↑</span></button>`; }
+  { const dis=(ap<1||game.resources<C.spy||c.spied)?'disabled':'';
+    html+=`<button class="actBtn" ${dis} onclick="spy('${c.id}')">🕵️ 첩보 활동 <span class="cost">${C.spy} · 성공률↑</span></button>`; }
+  if(isEnemy(c)){ const dis=(ap<1||game.resources<C.sanction)?'disabled':'';
+    html+=`<button class="actBtn" ${dis} onclick="sanction('${c.id}')">📉 경제 제재 <span class="cost">${C.sanction} · 경제↓</span></button>`; }
+  if(me().nukes>0){ const dis=(ap<1)?'disabled':'';
+    html+=`<button class="actBtn nuke" ${dis} onclick="useNuke('${c.id}')">☢️ 핵 압박 사용 <span class="cost">핵 -1 · 긴장+30</span></button>`; }
+  html+=`<div class="hint" style="margin-top:6px;">동맹 ≈ <b>${Math.round(allianceRate(c))}%</b> · 점령 ≈ <b>${Math.round(occupationRate(c))}%</b>
+    ${c.spied?'<br>🕵️ 첩보됨: 성공률 보너스 적용 중':''}</div>`;
+  return html;
+}
+
+/* =====================================================================
+   11. 플레이어 행동
+   ===================================================================== */
+function spend(ap,res){ game.actionPoints-=ap; game.resources-=res; }
+function pctCut(c, stat, range){ const p=(range[0]+rnd(range[1]-range[0]))/100; const loss=c[stat]*p; c[stat]=cap(c[stat]-loss); return Math.round(loss); }
+
+// 동맹 성공률
+function allianceRate(c){
+  let bonus=game.allianceBonus + (c.spied?BAL.ally.spyBonus:0);
+  if(myMods().allyBonus) bonus+=myMods().allyBonus;
+  if(game.regions.europe) bonus+=5;
+  if(myMods().africaAllyBonus && c.region==="africa") bonus+=myMods().africaAllyBonus;
+  let r=BAL.ally.base + me().diplomacy*BAL.ally.dipMul - c.resistance*BAL.ally.resistMul
+        + bonus - me().warFatigue*BAL.ally.fatiguePenalty;
+  if(game.resistCoalition && !isEnemy(c)) r-=15;
+  return clamp(r,5,95);
+}
+function attemptAlliance(id){
+  if(busy||game.over) return; const c=byId(id); const C=actionCosts();
+  if(game.actionPoints<1||game.resources<C.alliance) return;
+  spend(1,C.alliance); SFX.click();
+  const success=rnd(100)<allianceRate(c); game.allianceBonus=0;
+  if(success){ c.status="ally"; c.resistance=0; addTension(-BAL.tension.allyDown);
+    SFX.good(); toast(`🤝 ${c.name} 동맹 성공!`); log(`🤝 <b>${c.name}</b>와(과) 동맹을 맺었습니다!`,'good');
+  }else{ addTension(BAL.tension.allyFailUp); SFX.bad(); toast(`💢 ${c.name} 동맹 거절`); log(`💢 ${c.name}가 동맹을 거절했습니다.`,'bad'); }
+  diploNarrate({action:"동맹 시도",target:c.name,success});
+  afterAction();
+}
+
+// 점령 성공률
+function occupationRate(c){
+  let power = eff(me()) + me().technology*BAL.occ.techMul + (c.spied?BAL.occ.spyBonus:0);
+  let defp = eff(c)*0.6 + c.defense + (c.defenseActive?BAL.occ.defenseActiveBonus:0);
+  let r = BAL.occ.base + (power-defp)/BAL.occ.scale - me().warFatigue*BAL.occ.fatiguePenalty;
+  if(c.nukePressured>0) r+=BAL.occ.nukeBonus;
+  return clamp(r,5,92);
+}
+function attemptOccupation(id){
+  if(busy||game.over) return; const c=byId(id); const C=actionCosts();
+  if(game.actionPoints<1||game.resources<C.occupation) return;
+  spend(1,C.occupation); SFX.attack(); shakeMap(); game.warCount++;
+  const success=rnd(100)<occupationRate(c);
+  const m=me();
+  const fatMul=myMods().warFatigueGainMul||1;
+  if(success){
+    const lm=pctCut(m,'military',BAL.attrition.atkWin.mil);
+    const lr=Math.round(game.resources*(BAL.attrition.atkWin.res[0]+rnd(BAL.attrition.atkWin.res[1]-BAL.attrition.atkWin.res[0]))/100);
+    game.resources=Math.max(0,game.resources-lr);
+    pctCut(c,'military',BAL.attrition.defLost.mil); pctCut(c,'economy',BAL.attrition.defLost.eco);
+    c.status="occupied"; c.resistance=20; c.nukePressured=0;
+    m.warFatigue=clamp(m.warFatigue+BAL.fatigue.occWin*fatMul,0,100);
+    addTension(BAL.tension.occUp);
+    SFX.good(); toast(`🚩 ${c.name} 점령!`);
+    log(`🚩 <b>${c.name}</b> 점령 성공! 하지만 우리도 군사 ${lm}, 자원 ${lr} 소모됐습니다.`,'good');
+  }else{
+    const lm=pctCut(m,'military',BAL.attrition.atkLose.mil);
+    const lr=Math.round(game.resources*(BAL.attrition.atkLose.res[0]+rnd(BAL.attrition.atkLose.res[1]-BAL.attrition.atkLose.res[0]))/100);
+    game.resources=Math.max(0,game.resources-lr);
+    pctCut(c,'military',BAL.attrition.defHeld.mil); c.defense=cap(c.defense+8);
+    m.warFatigue=clamp(m.warFatigue+BAL.fatigue.occLose*fatMul,0,100);
+    addTension(BAL.tension.occFailUp);
+    SFX.bad(); toast(`💥 ${c.name} 점령 실패…`);
+    log(`💥 ${c.name} 점령 실패! 무리한 공격으로 군사 ${lm}, 자원 ${lr} 잃고 피로도가 크게 올랐습니다.`,'bad');
+  }
+  afterAction();
+}
+
+// 능력치 강화
+function upgrade(kind){
+  if(busy||game.over) return; const m=me(); const C=actionCosts(); const cost=C[kind];
+  if(game.actionPoints<1||game.resources<cost) return;
+  let step=BAL.upgrade[kind].gainStep;
+  if(kind==="military" && myMods().milUpMul) step*=myMods().milUpMul;
+  if(kind==="economy" && myMods().ecoUpMul) step*=myMods().ecoUpMul;
+  if(kind==="economy" && myMods().lateEcoBonus) step*=(1+Math.min(0.6,game.turn*0.03)); // 브라질: 후반 경제↑
+  const gain=growGain(m[kind],step);
+  spend(1,cost); game.lv[kind]++; m[kind]=cap(m[kind]+gain); SFX.good();
+  const names={military:'🪖 군사',economy:'💰 경제',diplomacy:'🕊️ 외교',technology:'🔬 기술'};
+  log(`${names[kind]} 강화! (+${gain} → ${m[kind]})`,'good');
+  afterAction();
+}
+
+// 방어 태세
+function defenseMode(){
+  if(busy||game.over) return; const C=actionCosts();
+  if(game.actionPoints<1||game.resources<C.defense||me().defenseActive) return;
+  spend(1,C.defense); me().defenseActive=true; addTension(-BAL.tension.defenseDown); SFX.click();
+  log(`🛡️ 방어 태세! 이번 턴 적 공격을 잘 막아냅니다.`,'warn'); afterAction();
+}
+
+// 국가 재정비
+function recover(){
+  if(busy||game.over) return; const C=actionCosts(); const m=me();
+  if(game.actionPoints<1||game.resources<C.recover) return;
+  spend(1,C.recover);
+  let down=BAL.fatigue.recoverDown*(myMods().recoverMul||1);
+  m.warFatigue=clamp(m.warFatigue-down,0,100); addTension(-BAL.tension.recoverDown); m.defenseBonus=true;
+  SFX.good(); log(`🛠️ 국가 재정비! 전쟁 피로도 -${Math.round(down)}, 긴장 완화, 다음 턴 방어 보너스.`,'good'); afterAction();
+}
+
+// 평화 회담
+function peaceTalk(){
+  if(busy||game.over) return; const C=actionCosts(); const m=me();
+  if(game.actionPoints<1||game.resources<C.peace) return;
+  spend(1,C.peace);
+  let down=BAL.tension.peaceDown*(myMods().peaceMul||1);
+  addTension(-down); m.diplomacy=cap(m.diplomacy+20); game.peaceShield=true;
+  if(game.resistCoalition && rnd(1)<0.5){ game.resistCoalition=false; log(`🕊️ 평화 회담으로 세계 저항 연합의 압박이 누그러졌습니다.`,'good'); }
+  SFX.good(); log(`🕊️ 평화 회담! 긴장도 -${Math.round(down)}, 외교 +20, 이번 턴 적 공격이 줄어듭니다.`,'good');
+  diploNarrate({action:"평화 회담",success:true});
+  afterAction();
+}
+
+// 첩보
+function spy(id){
+  if(busy||game.over) return; const c=byId(id); const C=actionCosts();
+  if(game.actionPoints<1||game.resources<C.spy||c.spied) return;
+  spend(1,C.spy); c.spied=true; SFX.good();
+  log(`🕵️ ${c.name} 첩보 성공! 실제 능력치(군사 ${c.military}·방어 ${c.defense}·핵 ${c.nukes})를 파악, 성공률 보너스를 얻습니다.`,'good');
+  afterAction();
+}
+
+// 경제 제재
+function sanction(id){
+  if(busy||game.over) return; const c=byId(id); const C=actionCosts();
+  if(game.actionPoints<1||game.resources<C.sanction||!isEnemy(c)) return;
+  spend(1,C.sanction); c.economy=cap(c.economy-50); c.warFatigue=clamp(c.warFatigue+BAL.fatigue.sanctionTarget,0,100);
+  addTension(BAL.tension.sanctionUp); SFX.bad();
+  log(`📉 ${c.name}에 경제 제재! 경제 -50, 상대 전쟁 피로도 상승. (긴장 +${BAL.tension.sanctionUp})`,'warn');
+  diploNarrate({action:"경제 제재",target:c.name,success:true});
+  afterAction();
+}
+
+// 동맹 강화
+function reinforceAlly(id){
+  if(busy||game.over) return; const c=byId(id); const C=actionCosts();
+  if(game.actionPoints<1||game.resources<C.reinforce||c.reinforced||!isMine(c)) return;
+  spend(1,C.reinforce); c.defense=cap(c.defense+50); c.reinforced=true; SFX.good();
+  log(`🛡️ ${c.name} 동맹 강화! 방어 +50, 이탈 위험 감소.`,'good'); afterAction();
+}
+
+// 핵무기 개발
+function developNuke(){
+  if(busy||game.over) return; const C=actionCosts(); const m=me();
+  if(game.actionPoints<BAL.nuke.ap||game.resources<C.nukeDev||m.technology<nukeTechReq()||game.tension<BAL.nuke.tensionReq) return;
+  spend(BAL.nuke.ap,C.nukeDev); m.nukes++; game.nukesCreated++;
+  addTension(BAL.nuke.devTension); m.diplomacy=cap(m.diplomacy-BAL.nuke.devDip);
+  m.warFatigue=clamp(m.warFatigue+BAL.fatigue.devNuke,0,100);
+  SFX.nuke(); toast("☢️ 핵무기 개발!");
+  log(`☢️ 핵무기 1개 개발! 강력한 억제력을 얻었지만 세계 긴장도가 올랐습니다.`,'nukec');
+  checkCrisisTrigger(); afterAction();
+}
+
+// 핵 압박 사용
+function useNuke(id){
+  if(busy||game.over) return; const c=byId(id); const m=me();
+  if(game.actionPoints<1||m.nukes<1||isMine(c)) return;
+  spend(1,0); m.nukes--; game.nukesUsed++; game.warCount++;
+  const lm=pctCut(c,'military',BAL.nuke.useMil), le=pctCut(c,'economy',BAL.nuke.useEco), ld=pctCut(c,'defense',BAL.nuke.useDef);
+  c.nukePressured=BAL.nuke.pressureTurns;
+  addTension(BAL.nuke.useTension); m.diplomacy=cap(m.diplomacy-BAL.nuke.useDip);
+  countries.filter(c2=>c2.status==="neutral").forEach(c2=>c2.resistance=clamp(c2.resistance+BAL.nuke.useNeutralResist,0,100));
+  m.warFatigue=clamp(m.warFatigue+BAL.fatigue.useNuke,0,100);
+  SFX.nuke(); shakeMap(); toast("☢️ 핵 압박 사용!");
+  log(`☢️ <b>${c.name}</b>에 초강력 전략 압박! 군사 -${lm}·경제 -${le}·방어 -${ld}. 다음 점령이 쉬워지지만 전 세계가 반발합니다.`,'nukec');
+  diploNarrate({action:"핵 압박",target:c.name,success:true});
+  checkCrisisTrigger(); afterAction();
+}
+
+function afterAction(){
+  checkRegions(); updateUI(); checkVictory();
+  if(game.over) return;
+  if(game.actionPoints<=0) log(`⚡ 행동을 모두 썼습니다. '턴 종료'를 누르세요.`,'warn');
+}
+
+/* =====================================================================
+   12. 세계 파국 위기
+   ===================================================================== */
+function totalNukes(){ return countries.reduce((s,c)=>s+c.nukes,0); }
+function checkCrisisTrigger(){
+  if(game.crisis) return;
+  const cr=BAL.crisis;
+  const trig = game.tension>=cr.trigTension || game.nukesUsed>=cr.trigNukeUsed
+    || totalNukes()>=cr.trigTotalNukes || (me().nukes>0 && game.holdStreak>=cr.trigHoldStreak);
+  if(trig){
+    game.crisis=true; game.crisisCount=cr.countdown;
+    SFX.alarm(); toast("☢️ 세계 파국 위기 발동!");
+    log(`☢️ <b>세계 파국 위기!</b> ${cr.countdown}턴 안에 긴장도를 ${cr.escapeTension} 아래로 낮추지 못하면 패배합니다!`,'nukec');
+  }
+}
+
+/* =====================================================================
+   13. 턴 종료 → AI → 이벤트 → 다음 턴
+   ===================================================================== */
+async function endTurn(){
+  if(busy||game.over) return; busy=true; SFX.click();
+  log(`— 세계가 움직입니다… —`,'warn');
+  await sleep(300);
+  await runAITurn();
+  if(game.over){ busy=false; return; }
+
+  // 위기 카운트다운 처리
+  if(game.crisis){
+    addTension(BAL.crisis.autoRise);
+    if(game.tension<=BAL.crisis.escapeTension){
+      game.crisis=false; SFX.good(); toast("🕊️ 위기를 넘겼습니다!");
+      log(`🕊️ 긴장 완화! 세계 파국 위기에서 벗어났습니다.`,'good');
+    }else{
+      game.crisisCount--;
+      if(game.crisisCount<0){
+        busy=false;
+        return endGame(false,"☢️ 세계 파국","세계가 통제 불가능한 위기에 빠졌습니다. 강한 힘보다 균형 잡힌 전략이 필요했습니다.");
+      }
+      log(`☢️ 파국까지 ${game.crisisCount+1}턴! 긴장도를 ${BAL.crisis.escapeTension} 아래로 낮추세요!`,'nukec');
+    }
+  }
+
+  // 다음 턴 준비
+  game.turn++; game.actionPoints=BAL.AP_PER_TURN;
+  game.peaceShield=false;
+  countries.forEach(c=>{ c.defenseActive=false; c.reinforced=false; if(c.nukePressured>0) c.nukePressured--; });
+  logTurn(game.turn);
+
+  // 자원 (재정비 보너스: 다음 턴 방어 — defenseBonus는 AI 공격 막을 때 사용)
+  let gain=resourceGain();
+  if(game.resPenalty>0){ const cut=Math.floor(gain*game.resPenalty); gain-=cut; game.resPenalty=0; log(`⛏️ 자원 부족으로 획득이 줄었습니다.`,'bad'); }
+  game.resources+=gain; log(`💰 자원 +${gain} (현재 ${game.resources})`,'');
+
+  triggerRandomEvent();
+
+  // 핵 보유+고긴장 누적(위기 트리거용)
+  if(me().nukes>0 && game.tension>=90) game.holdStreak++; else game.holdStreak=0;
+
+  // 긴장 자연 변화
+  const mineCnt=countries.filter(isMine).length;
+  if(mineCnt<countries.length/2) addTension(1);
+
+  checkEndgameStage(); checkCrisisTrigger();
+  busy=false; updateUI();
+  refreshNews(); maybeStrategy();
+  if(!game.over){ checkVictory(); checkDefeat(); }
+}
+function sleep(ms){ return new Promise(r=>setTimeout(r, (window.__TURBO?0:ms))); }
+
+/* =====================================================================
+   14. AI 행동 (전쟁 피로도, AI끼리 전쟁, 연합, 핵 개발)
+   ===================================================================== */
+async function runAITurn(){
+  const aggro=BAL.diff[game.diff].aiAggro;
+  const ais=countries.filter(isEnemy);
+  const myTot=totalStat(me());
+  const aiAvg=ais.length?ais.reduce((s,c)=>s+totalStat(c),0)/ais.length:1;
+  const playerStrong = myTot > aiAvg*1.25;
+  const extra = game.crisis?1.6:1;
+
+  // 강대국끼리 전쟁 (서로 약해짐 → 플레이어 기회)
+  if(ais.length>=2 && rnd(1)<0.22*aggro){
+    const a=ais[Math.floor(rnd(ais.length))]; let b;
+    do{ b=ais[Math.floor(rnd(ais.length))]; }while(b===a && ais.length>1);
+    if(a!==b){ pctCut(a,'military',[6,14]); pctCut(b,'military',[6,14]);
+      a.warFatigue=clamp(a.warFatigue+10,0,100); b.warFatigue=clamp(b.warFatigue+10,0,100);
+      addTension(2);
+      log(`⚔️ ${a.name}와(과) ${b.name}이(가) 충돌! 두 강대국 모두 약해졌습니다. 기회입니다!`,'event'); }
+  }
+
+  for(const ai of ais){
+    if(game.over) return; await sleep(180);
+
+    // 피로도 높으면 재정비
+    if(ai.warFatigue>60 && rnd(1)<0.6){ ai.warFatigue=clamp(ai.warFatigue-20,0,100); ai.economy=cap(ai.economy+6);
+      log(`🛠️ ${ai.name}이(가) 전쟁 피로로 재정비에 들어갔습니다.`,''); continue; }
+
+    // 고긴장 + 기술 높음 + 핵 선호 → 핵 개발
+    if(game.tension>50 && ai.technology>=650 && ai.nukes<2 && rnd(1)<0.25*ai.ai.nuke*extra){
+      ai.nukes++; addTension(8); log(`☢️ ${ai.name}이(가) 핵무기를 개발했습니다. 중립국들이 경계합니다.`,'nukec'); checkCrisisTrigger(); continue; }
+
+    // 플레이어가 강하면 연합/군비
+    if(playerStrong && rnd(1)<0.5){
+      ai.military=cap(ai.military+14);
+      const neut=countries.filter(c=>c.status==="neutral");
+      if(neut.length && rnd(1)<0.28*aggro){ const t=neut[Math.floor(rnd(neut.length))]; t.status="enemyAlly";
+        log(`⚠️ ${ai.name}이(가) ${t.name}을(를) 자기 편으로 끌어들였습니다!`,'bad');
+      }else log(`🛠️ ${ai.name}이(가) 군비를 늘렸습니다.`,'');
+      continue;
+    }
+
+    // 우리 편 공격 (피로도/방어 반영, 양측 소모)
+    const targets=countries.filter(c=>c.status==="ally"||c.status==="occupied");
+    if(targets.length && rnd(1)<0.28*aggro*ai.ai.aggr*extra*(game.peaceShield?0.4:1)){
+      const t=targets[Math.floor(rnd(targets.length))];
+      const meDef=(t.id===game.playerId)&&(me().defenseActive||me().defenseBonus);
+      const winChance=clamp(eff(ai)*0.055 - t.defense*0.04 - (t.defenseActive?20:0) - (meDef?15:0), 8, 60);
+      addTension(BAL.tension.aiAttackUp); game.warCount++;
+      pctCut(ai,'military',[4,9]); ai.warFatigue=clamp(ai.warFatigue+8,0,100); // 공격자도 소모
+      if(rnd(100)<winChance){ pctCut(t,'military',[8,16]); t.status="neutral"; t.resistance=20;
+        SFX.attack(); shakeMap(); log(`💥 ${ai.name}이(가) <b>${t.name}</b>을(를) 빼앗았습니다!`,'bad');
+      }else log(`🛡️ ${ai.name}의 ${t.name} 공격을 막아냈습니다!`,'good');
+      continue;
+    }
+
+    // 플레이어 직접 위협
+    if(rnd(1)<0.30*aggro*extra*(game.peaceShield?0.4:1)){
+      const def=me().defenseActive||me().defenseBonus; addTension(def?1:2);
+      if(!def){ const dmg=Math.floor(2+rnd(4)*aggro); game.resources=Math.max(0,game.resources-dmg);
+        log(`🔥 ${ai.name}이(가) 위협해 자원 ${dmg}을(를) 잃었습니다!`,'bad');
+      }else log(`🛡️ ${ai.name}의 위협을 방어로 막았습니다.`,'good');
+      continue;
+    }
+
+    // 평범하게 성장
+    const stat=['military','economy','technology'][Math.floor(rnd(3))];
+    ai[stat]=cap(ai[stat]+growGain(ai[stat],62));
+  }
+  me().defenseBonus=false; // 재정비 보너스는 1턴
+  updateUI(); checkDefeat();
+}
+
+/* =====================================================================
+   15. 랜덤 이벤트 (로그를 상황극처럼)
+   ===================================================================== */
+function triggerRandomEvent(){
+  const chance=25+game.tension*0.3; if(rnd(100)>chance) return;
+  const m=me(); const pool=[];
+  pool.push(()=>{ game.resources+=14; ev(`🎉 경제 호황! 자원 +14`,'good'); SFX.good(); });
+  pool.push(()=>{ game.resPenalty=0.3; ev(`⛏️ 세계 공급망 불안! 다음 턴 자원 획득 30% 감소.`,'bad'); SFX.bad(); });
+  pool.push(()=>{ game.allianceBonus=15; ev(`🕊️ 국제 외교 회의! 다음 동맹 성공률 +15%`,'good'); });
+  pool.push(()=>{ addTension(8); ev(`⚔️ 국경 분쟁 발생! 긴장도 +8`,'bad'); SFX.bad(); });
+  pool.push(()=>{ m.technology=cap(m.technology+12); ev(`🔬 기술 도약! 기술 +12`,'good'); SFX.good(); });
+  pool.push(()=>{ addTension(-10); ev(`🕊️ 평화 분위기 확산! 긴장도 -10`,'good'); SFX.good(); });
+  pool.push(()=>{ m.warFatigue=clamp(m.warFatigue-10,0,100); ev(`💗 국민 사기 회복! 전쟁 피로도 -10`,'good'); });
+  if(countries.some(c=>c.status==="ally"))
+    pool.push(()=>{ game.resources+=14; ev(`📦 동맹국이 자원 14를 지원했습니다!`,'good'); SFX.good(); });
+  if(countries.some(c=>c.status==="occupied"))
+    pool.push(()=>{ const occ=countries.filter(c=>c.status==="occupied"); const t=occ[Math.floor(rnd(occ.length))];
+      if(m.warFatigue>40 && rnd(1)<0.6){ t.status="neutral"; t.resistance=25; ev(`🔥 ${t.name}에서 반란! 점령지를 잃었습니다.`,'bad'); SFX.bad(); shakeMap(); }
+      else ev(`🚧 ${t.name}에서 작은 소요가 있었지만 진정됐습니다.`,'warn'); });
+  pool[Math.floor(rnd(pool.length))]();
+  updateUI();
+}
+function ev(msg,cls='event'){ log(`📰 ${msg}`,cls); toast(`📰 ${msg}`); }
+
+/* =====================================================================
+   16. 후반 단계 / 세계 저항 연합
+   ===================================================================== */
+function checkEndgameStage(){
+  const ratio=countries.filter(isMine).length/countries.length;
+  if(!game.endgame && ratio>=BAL.late.endgameAt){
+    game.endgame=true; game.resistCoalition=true;
+    log(`🚨 <b>세계 저항 연합 결성!</b> 남은 나라들이 힘을 합쳐 당신의 확장을 견제합니다. (적 방어↑, 동맹 어려워짐)`,'bad');
+    toast("🚨 세계 저항 연합!");
+    countries.filter(c=>!isMine(c)).forEach(c=>{ c.defense=cap(c.defense+BAL.late.resistDefenseUp);
+      c.resistance=clamp(c.resistance+BAL.late.resistResistUp,0,100);
+      if(rnd(1)<0.4 && c.technology>=600) c.nukes++; });
+  }
+}
+
+/* =====================================================================
+   17. 승리 / 패배
+   ===================================================================== */
+function checkVictory(){ if(game.over) return; if(countries.every(isMine)) endGame(true,"🎉 세계 통일 달성!","모든 나라가 당신의 깃발 아래 모였습니다!"); }
+function checkDefeat(){
+  if(game.over) return;
+  if(game.resources<=0 && game.turn>2) return endGame(false,"💸 국가 붕괴","자원이 바닥나 나라가 무너졌습니다.");
+  if(countries.filter(isEnemy).length/countries.length>=0.7) return endGame(false,"🏴 세계 정복당함","적국들이 세계 대부분을 차지했습니다.");
+}
+
+/* =====================================================================
+   18. 게임 종료 / 점수 / 엔딩
+   ===================================================================== */
+function avgFatigue(){ const mine=countries.filter(isMine); return mine.reduce((s,c)=>s+c.warFatigue,0)/Math.max(1,mine.length); }
+function endGame(victory,title,desc){
+  if(game.over) return; game.over=true;
+  const m=me();
+  const ally=countries.filter(c=>c.status==="ally").length;
+  const occ=countries.filter(c=>c.status==="occupied").length;
+  const af=avgFatigue();
+  const S=BAL.score;
+  let score = ally*S.ally + occ*S.occ + game.regionCount*S.region + game.resources*S.res
+    + m.technology*S.tech + m.economy*S.eco
+    - game.turn*S.turn - Math.round(game.tension)*S.tension - game.nukesUsed*S.nukeUsed - Math.round(af)*S.fatigue;
+  if(!victory) score=Math.floor(score*0.3);
+  score=Math.max(0,Math.round(score));
+  let grade='D';
+  if(score>=S.S)grade='S'; else if(score>=S.A)grade='A'; else if(score>=S.B)grade='B'; else if(score>=S.C)grade='C';
+  const peaceful = victory && game.nukesUsed===0 && (ally/countries.length)>=S.peacefulAllyRatio;
+  const gradeColor={S:'#ffd54a',A:'#7fc8ff',B:'#86efac',C:'#fcd34d',D:'#fca5a5'}[grade];
+
+  if(victory) SFX.win(); else SFX.lose();
+  const endingType = peaceful?'peacefulIntegration':(victory?(game.nukesUsed>0?'forcedIntegration':'integration'):'defeat');
+  const card=document.getElementById('resultCard');
+  card.innerHTML=`
+    <h2 style="color:${victory?'#86efac':'#fca5a5'}">${title}</h2>
+    ${peaceful?'<div style="color:#ffd54a;font-weight:bold;margin-bottom:6px;">🌟 평화적 세계 통합 엔딩 🌟</div>':''}
+    <p class="hint" style="font-size:14px;">${desc}</p>
+    <div class="narr" id="endNarr">…</div>
+    <div class="grade" style="color:${gradeColor}">${grade}</div>
+    <div class="scoreLine">최종 점수 <b style="font-size:20px;color:#fff">${score}</b></div>
+    <div class="scoreLine">🗓️ ${game.turn}턴 · 🤝 동맹 ${ally} · 🚩 점령 ${occ} · 🌏 지역통합 ${game.regionCount}</div>
+    <div class="scoreLine">☢️ 핵 개발 ${game.nukesCreated} · 핵 사용 ${game.nukesUsed} · ⚔️ 전쟁 ${game.warCount} · 😣 평균피로 ${Math.round(af)}</div>
+    <div class="scoreLine">🔬 기술 ${m.technology} · 💰 경제 ${m.economy} · 🕛 최종 긴장도 ${Math.round(game.tension)}</div>
+    <button class="bigBtn" style="margin-top:16px;" onclick="backToStart()">다시 도전 🔄</button>`;
+  document.getElementById('overlay').classList.add('active');
+  game._result={ victory, score, grade, turn:game.turn, ally, occ, nukesUsed:game.nukesUsed, tension:Math.round(game.tension), regionCount:game.regionCount };
+  log(`${title} — 점수 ${score} (${grade}등급)`, victory?'good':'bad');
+  endingNarrate({result:victory?'victory':'defeat', playerCountry:m.name, turnCount:game.turn,
+    allyCount:ally, occupiedCount:occ, nukesCreated:game.nukesCreated, nukesUsed:game.nukesUsed,
+    finalWorldTension:Math.round(game.tension), averageWarFatigue:Math.round(af), endingType, grade});
+}
+function backToStart(){ SFX.click();
+  document.getElementById('overlay').classList.remove('active');
+  document.getElementById('gameScreen').classList.remove('active');
+  document.getElementById('startScreen').classList.add('active');
+}
+
+/* =====================================================================
+   19. LLM 내러티브 (서버리스 /api/ai 호출, 실패 시 오프라인 fallback)
+       - 게임 수치/판정은 절대 LLM이 안 건드림. 문구만 받음.
+       - file:// 로 더블클릭 실행하면 fetch 실패 → 자동으로 fallback.
+   ===================================================================== */
+const AI = { enabled:true };
+async function aiCall(type, payload){
+  if(!AI.enabled) return null;
+  try{
+    const res=await fetch('/api/ai',{ method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({type,payload}) });
+    if(!res.ok) return null;
+    const d=await res.json(); return d.message||null;
+  }catch(e){ return null; }
+}
+function gameSummary(){
+  const m=me();
+  const strongest=[...countries].sort((a,b)=>totalStat(b)-totalStat(a))[0];
+  return { turn:game.turn, worldTension:Math.round(game.tension), playerCountry:m.name,
+    playerResources:game.resources, playerNukes:m.nukes, playerWarFatigue:Math.round(m.warFatigue),
+    allies:countries.filter(c=>c.status==="ally").length, occupied:countries.filter(c=>c.status==="occupied").length,
+    strongestCountry:strongest.name, crisis:game.crisis, recentEvents:(game.recent||[]).slice(-3) };
+}
+// 세계 뉴스 (매 턴 1회, fallback 즉시 표시 후 LLM 도착하면 교체)
+function offlineNews(){
+  const s=gameSummary(); const arr=[
+    `${s.strongestCountry}의 움직임에 세계의 이목이 쏠립니다. 각국은 다음 수를 신중히 고릅니다.`,
+    `세계 긴장도는 ${s.worldTension}. 외교와 군사 사이에서 균형 잡기가 중요해지고 있습니다.`,
+    `${s.playerCountry}이(가) ${s.allies}개 동맹을 바탕으로 영향력을 넓혀가고 있습니다.`,
+    `반복되는 충돌로 여러 나라가 지쳐갑니다. 평화의 기회를 노리는 나라도 있습니다.`,
+  ];
+  if(s.crisis) return `세계가 파국의 문턱에 섰습니다. 모두가 숨죽이며 긴장 완화를 지켜봅니다.`;
+  return arr[Math.floor(rnd(arr.length))];
+}
+function setNews(t){ document.getElementById('newsBox').innerHTML=t; }
+function refreshNews(force){
+  if(!force && game.newsTurn===game.turn) return; game.newsTurn=game.turn;
+  setNews(offlineNews());
+  aiCall('news', gameSummary()).then(msg=>{ if(msg && !game.over) setNews(msg); });
+}
+// 외교/행동 해설 (로그에 한 줄 추가)
+function diploNarrate(ctx){
+  aiCall('diplomacy', ctx).then(msg=>{ if(msg) log(`💬 ${msg}`,'event'); });
+}
+// 5턴마다 전략 분석
+function offlineStrategy(){
+  const m=me(); if(m.warFatigue>50) return "전쟁 피로도가 높습니다. 다음 몇 턴은 재정비로 숨을 고르는 게 좋아 보여요.";
+  if(game.tension>70) return "세계 긴장도가 위험 수준입니다. 평화 회담으로 한 박자 쉬어가는 걸 고려해보세요.";
+  if(countries.filter(c=>c.status==="ally").length===0) return "아직 동맹이 없네요. 외교를 키워 동맹을 늘리면 자원도 늘어요.";
+  return "지금은 균형이 좋습니다. 기술·외교를 키우며 기회를 노려보세요.";
+}
+function maybeStrategy(){
+  if(game.turn - game.stratTurn < 5) return; game.stratTurn=game.turn;
+  const box=document.getElementById('stratBox'); box.textContent=offlineStrategy();
+  aiCall('strategy', gameSummary()).then(msg=>{ if(msg && !game.over) box.textContent=msg; });
+}
+// 엔딩 내러티브
+function endingNarrate(info){
+  const el=document.getElementById('endNarr'); if(!el) return;
+  el.textContent = info.result==='victory'
+    ? (info.endingType==='peacefulIntegration'
+        ? `${info.playerCountry}은(는) 무리한 힘보다 동맹과 지혜로 세계를 하나로 모았습니다. 새 질서는 협력 위에 세워졌습니다.`
+        : `${info.playerCountry}은(는) 마침내 세계를 통합했습니다. 길은 험했지만 깃발은 하나가 되었습니다.`)
+    : `세계 정세는 ${info.playerCountry}의 손을 떠났습니다. 다음엔 더 균형 잡힌 전략으로 도전해보세요.`;
+  aiCall('ending', info).then(msg=>{ if(msg){ const e=document.getElementById('endNarr'); if(e) e.textContent=msg; } });
+}
+
+/* =====================================================================
+   20. 헤드리스 테스트용 노출(밸런스 시뮬이 접근). 게임 동작엔 영향 없음.
+   ===================================================================== */
+if(typeof window!=='undefined'){
+  window.__api={
+    startGame, endTurn, upgrade, defenseMode, recover, peaceTalk, spy, sanction, reinforceAlly,
+    attemptAlliance, attemptOccupation, developNuke, useNuke,
+    allianceRate, occupationRate, resourceGain, actionCosts,
+    get game(){ return game; }, get countries(){ return countries; },
+    setDiff:(d)=>{ chosenDiff=d; }, setCountry:(id)=>{ chosenCountry=id; },
+    me, byId, isMine, isEnemy, totalNukes,
+  };
+}
+</script>
+</body>
+</html>
