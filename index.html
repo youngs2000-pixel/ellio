@@ -118,6 +118,24 @@
     padding:11px 22px; border-radius:12px; font-size:16px; z-index:40; opacity:0; transition:.3s; pointer-events:none; text-align:center; max-width:80%; }
   .toast.show{ opacity:1; top:74px; }
   .hint{ color:var(--muted); font-size:12px; line-height:1.5; }
+
+  /* 랭킹 / 이름 입력 */
+  #saveRow{ display:flex; gap:8px; justify-content:center; margin:6px 0 4px; }
+  #saveRow input{ background:#0c1626; border:1px solid #34507d; color:var(--text);
+    padding:9px 12px; border-radius:10px; font-size:15px; width:170px; text-align:center; }
+  #saveRow input:focus{ outline:none; border-color:var(--blue); }
+  #saveRow button{ background:linear-gradient(135deg,#3a86ff,#1d4ed8); color:#fff; border:none;
+    padding:9px 16px; border-radius:10px; font-size:14px; font-weight:bold; cursor:pointer; }
+  #saveRow button:disabled{ opacity:.4; cursor:default; }
+  .rankList{ text-align:left; margin:8px auto 0; max-width:440px; max-height:230px; overflow-y:auto; }
+  .rankRow{ display:flex; align-items:center; gap:8px; padding:5px 10px; border-radius:8px; font-size:13px; }
+  .rankRow:nth-child(odd){ background:#0f1c33; }
+  .rankRow.me{ background:#1d3a6b; outline:1px solid var(--blue); }
+  .rankRow .rk{ width:34px; color:var(--muted); font-weight:bold; text-align:center; }
+  .rankRow .nm{ flex:1; font-weight:bold; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .rankRow .sc{ width:64px; text-align:right; font-variant-numeric:tabular-nums; }
+  .rankRow .gd{ width:24px; text-align:center; font-weight:bold; }
+  .rankSrc{ font-size:11px; color:var(--muted); margin-top:6px; }
 </style>
 </head>
 <body>
@@ -151,7 +169,10 @@
   </div>
   <p class="hint" style="max-width:560px;">※ 인터넷/서버가 없어도 게임은 똑같이 됩니다. AI 내러티브는 글만 더 생생해질 뿐, 켜고 끌 수 있어요.</p>
 
-  <button class="bigBtn" id="startBtn" onclick="startGame()" disabled>나라를 먼저 고르세요 ▶</button>
+  <div style="display:flex; gap:10px; align-items:center;">
+    <button class="bigBtn" id="startBtn" onclick="startGame()" disabled>나라를 먼저 고르세요 ▶</button>
+    <button class="diffBtn" style="padding:14px 20px;font-size:16px;" onclick="showRankingScreen()">🏆 랭킹 보기</button>
+  </div>
 </div>
 
 <!-- ===================== 게임 화면 ===================== -->
@@ -406,6 +427,8 @@ let hoverId = null;
 let busy = false;       // AI 처리 중 클릭 막기
 let chosenDiff = "normal";
 let chosenCountry = null;
+let lastEntry = null;   // 방금 끝난 게임의 점수 기록(이름 입력 후 랭킹에 저장)
+let scoreSaved = false; // 중복 저장 방지
 
 /* =====================================================================
    3. 효과음 (Web Audio API로 직접 만들기 — 외부 파일 불필요)
@@ -1192,6 +1215,10 @@ function endGame(victory,title,desc){
 
   if(victory) SFX.win(); else SFX.lose();
   const endingType = peaceful?'peacefulIntegration':(victory?(game.nukesUsed>0?'forcedIntegration':'integration'):'defeat');
+  // 랭킹에 기록할 결과 보관
+  lastEntry={ name:'', score, grade, country:m.name, emoji:m.emoji, turn:game.turn,
+    nukesUsed:game.nukesUsed, victory, diff:BAL.diff[game.diff].label, ts:Date.now(), id:Math.random().toString(36).slice(2,9) };
+  scoreSaved=false;
   const card=document.getElementById('resultCard');
   card.innerHTML=`
     <h2 style="color:${victory?'#86efac':'#fca5a5'}">${title}</h2>
@@ -1203,8 +1230,18 @@ function endGame(victory,title,desc){
     <div class="scoreLine">🗓️ ${game.turn}턴 · 🤝 동맹 ${ally} · 🚩 점령 ${occ} · 🌏 지역통합 ${game.regionCount}</div>
     <div class="scoreLine">☢️ 핵 개발 ${game.nukesCreated} · 핵 사용 ${game.nukesUsed} · ⚔️ 전쟁 ${game.warCount} · 😣 평균피로 ${Math.round(af)}</div>
     <div class="scoreLine">🔬 기술 ${m.technology} · 💰 경제 ${m.economy} · 🕛 최종 긴장도 ${Math.round(game.tension)}</div>
-    <button class="bigBtn" style="margin-top:16px;" onclick="backToStart()">다시 도전 🔄</button>`;
+    <div class="secTitle" style="margin-top:14px;">🏆 기록 남기기</div>
+    <div id="saveRow">
+      <input id="nameInput" maxlength="12" placeholder="이름을 입력하세요"
+        onkeydown="if(event.key==='Enter')submitScore()">
+      <button id="saveBtn" onclick="submitScore()">기록 저장</button>
+    </div>
+    <div class="rankList" id="rankList"><div class="hint" style="text-align:center;">랭킹 불러오는 중…</div></div>
+    <div class="rankSrc" id="rankSrc"></div>
+    <button class="bigBtn" style="margin-top:14px;" onclick="backToStart()">다시 도전 🔄</button>`;
   document.getElementById('overlay').classList.add('active');
+  loadAndShowRanking(null);
+  setTimeout(()=>{ const ni=document.getElementById('nameInput'); if(ni) ni.focus(); },100);
   game._result={ victory, score, grade, turn:game.turn, ally, occ, nukesUsed:game.nukesUsed, tension:Math.round(game.tension), regionCount:game.regionCount };
   log(`${title} — 점수 ${score} (${grade}등급)`, victory?'good':'bad');
   endingNarrate({result:victory?'victory':'defeat', playerCountry:m.name, turnCount:game.turn,
@@ -1285,7 +1322,82 @@ function endingNarrate(info){
 }
 
 /* =====================================================================
-   20. 헤드리스 테스트용 노출(밸런스 시뮬이 접근). 게임 동작엔 영향 없음.
+   20. 랭킹 (온라인 공유 + 로컬 자동 폴백)
+       - 서버(/api/score, Upstash Redis)가 설정돼 있으면 모든 기기가 공유.
+       - 서버가 없거나(아직 미설정/오프라인/더블클릭) 실패하면 자동으로
+         이 브라우저 localStorage 랭킹을 사용 → 게임은 절대 안 멈춤.
+   ===================================================================== */
+const RANK_KEY='ww3_ranking_v2';
+const hasLS=()=>{ try{ return typeof localStorage!=='undefined' && !!localStorage; }catch(e){ return false; } };
+function sanitizeName(s){ return (s||'').replace(/[<>&"'\\\r\n\t]/g,'').trim().slice(0,12); }
+function loadLocalRank(){ if(!hasLS()) return []; try{ return JSON.parse(localStorage.getItem(RANK_KEY)||'[]'); }catch(e){ return []; } }
+function saveLocalRank(entry){ const a=loadLocalRank(); a.push(entry); a.sort((x,y)=>y.score-x.score);
+  const top=a.slice(0,50); if(hasLS()){ try{ localStorage.setItem(RANK_KEY, JSON.stringify(top)); }catch(e){} } return top; }
+
+async function fetchServerRank(){
+  try{ const r=await fetch('/api/score'); if(!r.ok) return null; const d=await r.json(); return d&&d.ranking?d.ranking:null; }
+  catch(e){ return null; }
+}
+async function postServerRank(entry){
+  try{ const r=await fetch('/api/score',{ method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(entry) });
+    if(!r.ok) return null; const d=await r.json(); return d&&d.ranking?d.ranking:null; }
+  catch(e){ return null; }
+}
+
+function renderRank(list, myId, source){
+  const box=document.getElementById('rankList'); if(!box) return;
+  if(!list || !list.length){ box.innerHTML='<div class="hint" style="text-align:center;">아직 기록이 없어요. 첫 번째 기록의 주인공이 되어보세요!</div>'; }
+  else{
+    box.innerHTML=list.slice(0,10).map((e,i)=>{
+      const medal=['🥇','🥈','🥉'][i]||(i+1);
+      const mine=(myId&&e.id===myId)?' me':'';
+      const vic=e.victory?'🏆':'🏳️';
+      return `<div class="rankRow${mine}"><span class="rk">${medal}</span>
+        <span class="nm">${vic} ${e.emoji||''} ${escapeHtml(e.name)}</span>
+        <span class="gd">${e.grade}</span><span class="sc">${e.score}</span></div>`;
+    }).join('');
+  }
+  const src=document.getElementById('rankSrc');
+  if(src) src.textContent = source==='server'?'🌐 온라인 공유 랭킹':'💾 이 기기 랭킹 (온라인 서버 미연결)';
+}
+function escapeHtml(s){ return (s||'').replace(/[<>&]/g,m=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[m])); }
+
+// 게임 종료 직후: 현재 랭킹을 불러와 보여줌
+async function loadAndShowRanking(myId){
+  const server=await fetchServerRank();
+  if(server) renderRank(server, myId, 'server');
+  else renderRank(loadLocalRank(), myId, 'local');
+}
+
+// 이름 입력 후 저장
+async function submitScore(){
+  if(scoreSaved || !lastEntry) return;
+  const ni=document.getElementById('nameInput'); const name=sanitizeName(ni&&ni.value);
+  if(!name){ toast('이름을 입력해 주세요!'); if(ni) ni.focus(); return; }
+  scoreSaved=true; lastEntry.name=name;
+  const btn=document.getElementById('saveBtn'); if(btn){ btn.disabled=true; btn.textContent='저장됨 ✓'; }
+  if(ni) ni.disabled=true;
+  SFX.good();
+  saveLocalRank({...lastEntry});                 // 로컬엔 항상 백업 저장
+  const server=await postServerRank(lastEntry);  // 서버 있으면 공유 랭킹에 저장
+  if(server) renderRank(server, lastEntry.id, 'server');
+  else renderRank(loadLocalRank(), lastEntry.id, 'local');
+}
+
+// 시작 화면의 '🏆 랭킹 보기'
+async function showRankingScreen(){
+  SFX.click();
+  const card=document.getElementById('resultCard');
+  card.innerHTML=`<h2 style="color:#ffd54a">🏆 명예의 전당</h2>
+    <div class="rankList" id="rankList"><div class="hint" style="text-align:center;">불러오는 중…</div></div>
+    <div class="rankSrc" id="rankSrc"></div>
+    <button class="bigBtn" style="margin-top:14px;" onclick="backToStart()">닫기</button>`;
+  document.getElementById('overlay').classList.add('active');
+  loadAndShowRanking(null);
+}
+
+/* =====================================================================
+   21. 헤드리스 테스트용 노출(밸런스 시뮬이 접근). 게임 동작엔 영향 없음.
    ===================================================================== */
 if(typeof window!=='undefined'){
   window.__api={
