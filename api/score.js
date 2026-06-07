@@ -11,8 +11,24 @@
      POST /api/score {entry} → 저장 후 { ranking:[...] }
    ======================================================================= */
 
-const URL = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL || "";
-const TOKEN = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN || "";
+/* 환경변수 이름은 연동 방식마다 다르다. 표준 이름 + Vercel Upstash Integration이
+   자동 생성하는 접두어(UPSTASH_REDIS_REST_*) 이름을 모두 순서대로 지원한다.
+   ※ REST API용(https://..upstash.io) URL/TOKEN만 사용. redis:// 형태(_KV_URL,
+     _REDIS_URL)는 이 코드(REST 호출)에선 쓰지 않는다. */
+const pickEnv = (...names) => {
+  for (const n of names) { const v = process.env[n]; if (v) return v; }
+  return "";
+};
+const URL = pickEnv(
+  "KV_REST_API_URL",
+  "UPSTASH_REDIS_REST_URL",
+  "UPSTASH_REDIS_REST_KV_REST_API_URL"
+).replace(/\/+$/, ""); // 끝 슬래시 제거(`${URL}/pipeline` 중복 방지)
+const TOKEN = pickEnv(
+  "KV_REST_API_TOKEN",
+  "UPSTASH_REDIS_REST_TOKEN",
+  "UPSTASH_REDIS_REST_KV_REST_API_TOKEN"
+);
 const KEY = "ww3:leaderboard";
 const MAX_KEEP = 100;   // 서버에 보관할 최대 기록 수
 const TOP_N = 30;       // 돌려줄 상위 기록 수
@@ -89,7 +105,12 @@ export default async function handler(req, res) {
   if (req.method === "OPTIONS") return res.status(200).end();
 
   // 저장소 미설정 → 프런트가 로컬 랭킹으로 폴백하도록 신호
-  if (!configured()) return res.status(200).json({ ranking: null, configured: false });
+  if (!configured())
+    return res.status(200).json({
+      configured: false,
+      ranking: null,
+      message: "온라인 랭킹 서버가 아직 연결되지 않았습니다.",
+    });
 
   try {
     if (req.method === "POST") {
