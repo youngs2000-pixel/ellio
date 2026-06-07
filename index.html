@@ -624,8 +624,9 @@ function buildPickGrid(){
     grid.appendChild(d);
   });
 }
-document.querySelectorAll('.diffBtn').forEach(b=>{
-  b.onclick=()=>{ document.querySelectorAll('.diffBtn').forEach(x=>x.classList.remove('selected'));
+/* 난이도 버튼만 선택(메뉴용 .diffBtn 버튼의 inline onclick을 덮어쓰지 않도록 [data-diff]로 한정) */
+document.querySelectorAll('.diffBtn[data-diff]').forEach(b=>{
+  b.onclick=()=>{ document.querySelectorAll('.diffBtn[data-diff]').forEach(x=>x.classList.remove('selected'));
     b.classList.add('selected'); chosenDiff=b.dataset.diff; SFX.click(); };
 });
 document.getElementById('aiSwitch').onclick=function(){
