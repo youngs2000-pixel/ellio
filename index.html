@@ -136,6 +136,11 @@
   .rankRow .sc{ width:64px; text-align:right; font-variant-numeric:tabular-nums; }
   .rankRow .gd{ width:24px; text-align:center; font-weight:bold; }
   .rankSrc{ font-size:11px; color:var(--muted); margin-top:6px; }
+  .rankTabs{ display:flex; gap:6px; justify-content:center; margin:6px 0; }
+  .rankTab{ background:var(--panel2); border:1px solid #34507d; color:var(--muted);
+    padding:6px 14px; border-radius:9px; font-size:13px; cursor:pointer; transition:.12s; }
+  .rankTab:hover{ border-color:var(--blue); color:var(--text); }
+  .rankTab.active{ background:var(--blue); color:#fff; border-color:var(--blue); font-weight:bold; }
 
   /* 게임 설명서 */
   #manualOverlay{ position:absolute; inset:0; background:#06070bee; display:none; align-items:center; justify-content:center; z-index:60; padding:18px; }
@@ -1350,7 +1355,8 @@ function endGame(victory,title,desc){
   const endingType = peaceful?'peacefulIntegration':(victory?(game.nukesUsed>0?'forcedIntegration':'integration'):'defeat');
   // 랭킹에 기록할 결과 보관
   lastEntry={ name:'', score, grade, country:m.name, emoji:m.emoji, turn:game.turn,
-    nukesUsed:game.nukesUsed, victory, diff:BAL.diff[game.diff].label, ts:Date.now(), id:Math.random().toString(36).slice(2,9) };
+    nukesUsed:game.nukesUsed, victory, diffKey:game.diff, diff:BAL.diff[game.diff].label,
+    ts:Date.now(), id:Math.random().toString(36).slice(2,9) };
   scoreSaved=false;
   const card=document.getElementById('resultCard');
   card.innerHTML=`
@@ -1369,11 +1375,12 @@ function endGame(victory,title,desc){
         onkeydown="if(event.key==='Enter')submitScore()">
       <button id="saveBtn" onclick="submitScore()">기록 저장</button>
     </div>
+    ${rankTabsHTML(game.diff)}
     <div class="rankList" id="rankList"><div class="hint" style="text-align:center;">랭킹 불러오는 중…</div></div>
     <div class="rankSrc" id="rankSrc"></div>
     <button class="bigBtn" style="margin-top:14px;" onclick="backToStart()">다시 도전 🔄</button>`;
   document.getElementById('overlay').classList.add('active');
-  loadAndShowRanking(null);
+  curRankMyId=null; selectRankDiff(game.diff);   // 방금 플레이한 난이도 랭킹을 먼저 보여줌
   setTimeout(()=>{ const ni=document.getElementById('nameInput'); if(ni) ni.focus(); },100);
   game._result={ victory, score, grade, turn:game.turn, ally, occ, nukesUsed:game.nukesUsed, tension:Math.round(game.tension), regionCount:game.regionCount };
   log(`${title} — 점수 ${score} (${grade}등급)`, victory?'good':'bad');
@@ -1460,21 +1467,45 @@ function endingNarrate(info){
        - 서버가 없거나(아직 미설정/오프라인/더블클릭) 실패하면 자동으로
          이 브라우저 localStorage 랭킹을 사용 → 게임은 절대 안 멈춤.
    ===================================================================== */
-const RANK_KEY='ww3_ranking_v2';
-const hasLS=()=>{ try{ return typeof localStorage!=='undefined' && !!localStorage; }catch(e){ return false; } };
-function sanitizeName(s){ return (s||'').replace(/[<>&"'\\\r\n\t]/g,'').trim().slice(0,12); }
-function loadLocalRank(){ if(!hasLS()) return []; try{ return JSON.parse(localStorage.getItem(RANK_KEY)||'[]'); }catch(e){ return []; } }
-function saveLocalRank(entry){ const a=loadLocalRank(); a.push(entry); a.sort((x,y)=>y.score-x.score);
-  const top=a.slice(0,50); if(hasLS()){ try{ localStorage.setItem(RANK_KEY, JSON.stringify(top)); }catch(e){} } return top; }
+/* 랭킹은 난이도(easy/normal/hard)별로 따로 기록합니다. (낮은 난이도가 점수 올리기 쉬워 공정 비교 불가) */
+let curRankDiff='normal';   // 지금 보고 있는 랭킹 난이도
+let curRankMyId=null;       // 내 기록 강조용 id
+const DIFF_KEYS=['easy','normal','hard'];
+const DIFF_TABS={ easy:'😊 쉬움', normal:'🙂 보통', hard:'😈 어려움' };
+const normDiff=(d)=>DIFF_KEYS.includes(d)?d:'normal';
 
-async function fetchServerRank(){
-  try{ const r=await fetch('/api/score'); if(!r.ok) return null; const d=await r.json(); return d&&d.ranking?d.ranking:null; }
+const hasLS=()=>{ try{ return typeof localStorage!=='undefined' && !!localStorage; }catch(e){ return false; } };
+const LS_KEY=(d)=>'ww3rank_'+normDiff(d);
+function sanitizeName(s){ return (s||'').replace(/[<>&"'\\\r\n\t]/g,'').trim().slice(0,12); }
+function loadLocalRank(diffKey){ if(!hasLS()) return []; try{ return JSON.parse(localStorage.getItem(LS_KEY(diffKey))||'[]'); }catch(e){ return []; } }
+function saveLocalRank(entry){ const d=normDiff(entry.diffKey); const a=loadLocalRank(d); a.push(entry);
+  a.sort((x,y)=>y.score-x.score); const top=a.slice(0,50);
+  if(hasLS()){ try{ localStorage.setItem(LS_KEY(d), JSON.stringify(top)); }catch(e){} } return top; }
+
+async function fetchServerRank(diffKey){
+  try{ const r=await fetch('/api/score?diff='+normDiff(diffKey)); if(!r.ok) return null; const d=await r.json(); return d&&d.ranking?d.ranking:null; }
   catch(e){ return null; }
 }
 async function postServerRank(entry){
   try{ const r=await fetch('/api/score',{ method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(entry) });
     if(!r.ok) return null; const d=await r.json(); return d&&d.ranking?d.ranking:null; }
   catch(e){ return null; }
+}
+
+/* 난이도 탭 HTML */
+function rankTabsHTML(activeKey){
+  const a=normDiff(activeKey);
+  return `<div class="rankTabs">`+DIFF_KEYS.map(k=>
+    `<button class="rankTab${k===a?' active':''}" onclick="selectRankDiff('${k}')">${DIFF_TABS[k]}</button>`).join('')+`</div>`;
+}
+/* 탭을 누르거나 랭킹을 처음 열 때: 해당 난이도 랭킹을 불러와 표시 */
+async function selectRankDiff(diffKey){
+  curRankDiff=normDiff(diffKey);
+  document.querySelectorAll('.rankTab').forEach(t=>t.classList.toggle('active', t.textContent===DIFF_TABS[curRankDiff]));
+  const box=document.getElementById('rankList'); if(box) box.innerHTML='<div class="hint" style="text-align:center;">불러오는 중…</div>';
+  const server=await fetchServerRank(curRankDiff);
+  if(server) renderRank(server, curRankMyId, 'server');
+  else renderRank(loadLocalRank(curRankDiff), curRankMyId, 'local');
 }
 
 function renderRank(list, myId, source){
@@ -1491,18 +1522,12 @@ function renderRank(list, myId, source){
     }).join('');
   }
   const src=document.getElementById('rankSrc');
-  if(src) src.textContent = source==='server'?'🌐 온라인 공유 랭킹':'💾 이 기기 랭킹 (온라인 서버 미연결)';
+  if(src) src.textContent = (source==='server'?'🌐 온라인 공유 랭킹':'💾 이 기기 랭킹 (온라인 서버 미연결)')
+    + ` · 난이도: ${DIFF_TABS[curRankDiff]}`;
 }
 function escapeHtml(s){ return (s||'').replace(/[<>&]/g,m=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[m])); }
 
-// 게임 종료 직후: 현재 랭킹을 불러와 보여줌
-async function loadAndShowRanking(myId){
-  const server=await fetchServerRank();
-  if(server) renderRank(server, myId, 'server');
-  else renderRank(loadLocalRank(), myId, 'local');
-}
-
-// 이름 입력 후 저장
+// 이름 입력 후 저장 (방금 플레이한 난이도 랭킹에 기록)
 async function submitScore(){
   if(scoreSaved || !lastEntry) return;
   const ni=document.getElementById('nameInput'); const name=sanitizeName(ni&&ni.value);
@@ -1511,22 +1536,24 @@ async function submitScore(){
   const btn=document.getElementById('saveBtn'); if(btn){ btn.disabled=true; btn.textContent='저장됨 ✓'; }
   if(ni) ni.disabled=true;
   SFX.good();
+  curRankMyId=lastEntry.id; curRankDiff=normDiff(lastEntry.diffKey);
   saveLocalRank({...lastEntry});                 // 로컬엔 항상 백업 저장
-  const server=await postServerRank(lastEntry);  // 서버 있으면 공유 랭킹에 저장
-  if(server) renderRank(server, lastEntry.id, 'server');
-  else renderRank(loadLocalRank(), lastEntry.id, 'local');
+  const server=await postServerRank(lastEntry);  // 서버 있으면 공유 랭킹에 저장(난이도별)
+  if(server) renderRank(server, curRankMyId, 'server');
+  else renderRank(loadLocalRank(curRankDiff), curRankMyId, 'local');
 }
 
-// 시작 화면의 '🏆 랭킹 보기'
+// 시작 화면의 '🏆 랭킹 보기' (현재 선택한 난이도부터 보여줌)
 async function showRankingScreen(){
   SFX.click();
   const card=document.getElementById('resultCard');
   card.innerHTML=`<h2 style="color:#ffd54a">🏆 명예의 전당</h2>
+    ${rankTabsHTML(chosenDiff)}
     <div class="rankList" id="rankList"><div class="hint" style="text-align:center;">불러오는 중…</div></div>
     <div class="rankSrc" id="rankSrc"></div>
     <button class="bigBtn" style="margin-top:14px;" onclick="backToStart()">닫기</button>`;
   document.getElementById('overlay').classList.add('active');
-  loadAndShowRanking(null);
+  curRankMyId=null; selectRankDiff(chosenDiff);
 }
 
 /* 게임 설명서 열기/닫기 */

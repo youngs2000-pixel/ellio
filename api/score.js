@@ -29,8 +29,12 @@ const TOKEN = pickEnv(
   "UPSTASH_REDIS_REST_TOKEN",
   "UPSTASH_REDIS_REST_KV_REST_API_TOKEN"
 );
-const KEY = "ww3:leaderboard";
-const MAX_KEEP = 100;   // 서버에 보관할 최대 기록 수
+/* 랭킹은 난이도(easy/normal/hard)별로 따로 보관한다.
+   (낮은 난이도가 점수 올리기 쉬워 같은 표에서 비교하면 불공정) */
+const DIFFS = ["easy", "normal", "hard"];
+const normDiff = (d) => (DIFFS.includes(d) ? d : "normal");
+const keyFor = (d) => "ww3:leaderboard:" + normDiff(d);
+const MAX_KEEP = 100;   // 난이도별 보관할 최대 기록 수
 const TOP_N = 30;       // 돌려줄 상위 기록 수
 
 const configured = () => URL && TOKEN;
@@ -86,14 +90,15 @@ function clean(entry) {
     turn: Math.max(0, Math.min(999, Math.round(Number(entry.turn) || 0))),
     nukesUsed: Math.max(0, Math.min(99, Math.round(Number(entry.nukesUsed) || 0))),
     victory: !!entry.victory,
-    diff: String(entry.diff || "").slice(0, 8),
+    diffKey: normDiff(entry.diffKey),                 // 난이도(어느 표에 넣을지)
+    diff: String(entry.diff || "").slice(0, 8),        // 표시용 라벨
     ts: Date.now(),
     id: String(entry.id || Math.random().toString(36).slice(2, 9)).slice(0, 12),
   };
 }
 
-async function getRanking() {
-  const res = await redis([["ZREVRANGE", KEY, 0, TOP_N - 1, "WITHSCORES"]]);
+async function getRanking(diff) {
+  const res = await redis([["ZREVRANGE", keyFor(diff), 0, TOP_N - 1, "WITHSCORES"]]);
   const flat = res && res[0] && res[0].result;
   return parseRange(flat);
 }
@@ -116,19 +121,22 @@ export default async function handler(req, res) {
     if (req.method === "POST") {
       const body = typeof req.body === "string" ? JSON.parse(req.body || "{}") : req.body || {};
       const entry = clean(body);
-      if (!entry) return res.status(200).json({ ranking: await getRanking() });
+      const diff = entry ? entry.diffKey : "normal";
+      if (!entry) return res.status(200).json({ ranking: await getRanking(diff), diff, configured: true });
       const member = JSON.stringify(entry);
-      // 추가 → 100개 초과분 정리 → 상위 목록 반환 (한 번의 파이프라인으로)
+      const key = keyFor(diff);
+      // 추가 → 100개 초과분 정리 → 상위 목록 반환 (한 번의 파이프라인으로, 난이도별 키)
       const out = await redis([
-        ["ZADD", KEY, entry.score, member],
-        ["ZREMRANGEBYRANK", KEY, 0, -(MAX_KEEP + 1)],
-        ["ZREVRANGE", KEY, 0, TOP_N - 1, "WITHSCORES"],
+        ["ZADD", key, entry.score, member],
+        ["ZREMRANGEBYRANK", key, 0, -(MAX_KEEP + 1)],
+        ["ZREVRANGE", key, 0, TOP_N - 1, "WITHSCORES"],
       ]);
       const flat = out && out[2] && out[2].result;
-      return res.status(200).json({ ranking: parseRange(flat), configured: true });
+      return res.status(200).json({ ranking: parseRange(flat), diff, configured: true });
     }
-    // GET
-    return res.status(200).json({ ranking: await getRanking(), configured: true });
+    // GET  (?diff=easy|normal|hard)
+    const diff = normDiff(req.query && req.query.diff);
+    return res.status(200).json({ ranking: await getRanking(diff), diff, configured: true });
   } catch (e) {
     // 오류가 나도 게임이 멈추지 않도록 null 반환(프런트 로컬 폴백)
     return res.status(200).json({ ranking: null, configured: true, error: true });
