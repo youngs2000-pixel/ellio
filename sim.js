@@ -32,6 +32,7 @@ const document = {
   querySelectorAll: () => [],
   querySelector: () => dummy,
   createElement: () => dummy,
+  addEventListener: () => {},
 };
 const Image = function () { this.onload = null; this.onerror = null; let _s="";
   Object.defineProperty(this,"src",{ set(v){ _s=v; }, get(){ return _s; } }); };

@@ -136,6 +136,33 @@
   .rankRow .sc{ width:64px; text-align:right; font-variant-numeric:tabular-nums; }
   .rankRow .gd{ width:24px; text-align:center; font-weight:bold; }
   .rankSrc{ font-size:11px; color:var(--muted); margin-top:6px; }
+
+  /* 게임 설명서 */
+  #manualOverlay{ position:absolute; inset:0; background:#06070bee; display:none; align-items:center; justify-content:center; z-index:60; padding:18px; }
+  #manualOverlay.active{ display:flex; }
+  .manualCard{ background:var(--panel); border:2px solid #34507d; border-radius:18px; width:760px; max-width:100%;
+    max-height:92vh; display:flex; flex-direction:column; box-shadow:0 10px 50px #000a; }
+  .manualHead{ display:flex; align-items:center; justify-content:space-between; padding:16px 22px; border-bottom:2px solid #243a5e; }
+  .manualHead h2{ font-size:24px; }
+  .manualHead button{ background:var(--panel2); border:1px solid #34507d; color:var(--text); font-size:14px;
+    padding:8px 14px; border-radius:10px; cursor:pointer; }
+  .manualHead button:hover{ border-color:var(--blue); }
+  .manualBody{ padding:8px 22px 22px; overflow-y:auto; line-height:1.65; font-size:14px; }
+  .manualBody h3{ font-size:16px; color:#7fc8ff; margin:18px 0 6px; border-bottom:1px solid #2a3f63; padding-bottom:4px; }
+  .manualBody p{ margin:6px 0; color:#dbe6fb; }
+  .manualBody ul{ margin:6px 0 6px 4px; list-style:none; }
+  .manualBody li{ margin:5px 0; padding-left:20px; position:relative; color:#dbe6fb; }
+  .manualBody li::before{ content:"▸"; position:absolute; left:2px; color:#3a86ff; }
+  .manualBody b{ color:#fff; }
+  .manualBody .em{ color:#fcd34d; font-weight:bold; }
+  .legend{ display:flex; flex-wrap:wrap; gap:7px; margin:8px 0; }
+  .chip{ display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius:20px; font-size:12.5px; font-weight:bold; color:#06101f; }
+  .chip .dot{ width:11px; height:11px; border-radius:50%; box-shadow:0 0 0 2px #ffffff44; }
+  .mAct{ background:#10203a; border:1px solid #2a4a78; border-radius:10px; padding:8px 12px; margin:6px 0; }
+  .mAct .nm{ font-weight:bold; color:#fff; }
+  .mAct .cost{ float:right; color:#9fb0cc; font-size:12px; }
+  .scoreBox{ background:#11182b; border:1px solid #34507d; border-radius:10px; padding:10px 14px; font-family:'Consolas',monospace;
+    font-size:13px; color:#cfe0ff; white-space:pre-wrap; line-height:1.6; }
 </style>
 </head>
 <body>
@@ -169,8 +196,9 @@
   </div>
   <p class="hint" style="max-width:560px;">※ 인터넷/서버가 없어도 게임은 똑같이 됩니다. AI 내러티브는 글만 더 생생해질 뿐, 켜고 끌 수 있어요.</p>
 
-  <div style="display:flex; gap:10px; align-items:center;">
+  <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; justify-content:center;">
     <button class="bigBtn" id="startBtn" onclick="startGame()" disabled>나라를 먼저 고르세요 ▶</button>
+    <button class="diffBtn" style="padding:14px 20px;font-size:16px;" onclick="openManual()">📖 게임 설명서</button>
     <button class="diffBtn" style="padding:14px 20px;font-size:16px;" onclick="showRankingScreen()">🏆 랭킹 보기</button>
   </div>
 </div>
@@ -243,6 +271,110 @@
 </div>
 
 <div id="overlay"><div class="card" id="resultCard"></div></div>
+
+<!-- ===================== 게임 설명서 ===================== -->
+<div id="manualOverlay">
+  <div class="manualCard">
+    <div class="manualHead">
+      <h2>📖 게임 설명서</h2>
+      <button onclick="closeManual()">✕ 닫기</button>
+    </div>
+    <div class="manualBody">
+
+      <p>처음 해도 괜찮아요! 아래만 알면 바로 시작할 수 있어요. 😊</p>
+
+      <h3>🎯 1. 목표</h3>
+      <p>세계 12개 나라를 <b>모두 내 편(동맹 또는 점령)</b>으로 만들면 <span class="em">세계 통일 = 승리!</span>
+         하지만 너무 싸우면 모두 지치고, 핵 때문에 세계가 망할 수도 있어요. 힘과 평화 사이의 <b>균형</b>이 중요합니다.</p>
+
+      <h3>🕹️ 2. 한 턴은 이렇게</h3>
+      <ul>
+        <li>한 턴에 <b>행동(⚡)을 2번</b> 할 수 있어요. 무엇을 할지 잘 고르는 게 핵심!</li>
+        <li>모든 행동은 <b>자원(💰)</b>을 씁니다. 자원은 턴이 끝날 때마다 들어와요(경제가 높을수록 많이).</li>
+        <li>행동을 다 했으면 <b>「턴 종료 ⏭️」</b> → 그러면 다른 나라(AI)들이 움직이고, 세계 뉴스와 사건이 일어나요.</li>
+        <li>지도에서 <b>나라를 클릭</b>하면 그 나라 정보와, 그 나라에게 할 수 있는 행동이 오른쪽에 나와요.</li>
+      </ul>
+
+      <h3>🗺️ 3. 지도 색깔이 뜻하는 것</h3>
+      <div class="legend">
+        <span class="chip" style="background:#3a86ff;color:#fff;"><span class="dot" style="background:#fff;"></span>내 나라</span>
+        <span class="chip" style="background:#7fc8ff;"><span class="dot" style="background:#fff;"></span>동맹국(내 편)</span>
+        <span class="chip" style="background:#1d4ed8;color:#fff;"><span class="dot" style="background:#fff;"></span>점령지(내 편)</span>
+        <span class="chip" style="background:#7b8aa0;"><span class="dot" style="background:#fff;"></span>중립국</span>
+        <span class="chip" style="background:#ef4444;color:#fff;"><span class="dot" style="background:#fff;"></span>적국</span>
+        <span class="chip" style="background:#f59e0b;"><span class="dot" style="background:#fff;"></span>적의 동맹</span>
+        <span class="chip" style="background:#a855f7;color:#fff;"><span class="dot" style="background:#fff;"></span>핵 위협(깜빡임)</span>
+      </div>
+      <p>※ <b>중립국·적의 동맹</b>은 동맹을 맺을 수 있어요. 하지만 <b>빨간 적국</b>은 동맹이 안 되고 <b>점령만</b> 가능해요.</p>
+
+      <h3>🏛️ 4. 내 나라 키우기</h3>
+      <p>능력치는 <b>군사🪖 · 경제💰 · 외교🕊️ · 기술🔬 · 방어🛡️</b>가 있고 <b>1~1000</b>까지 자라요.
+         <b>1000에 가까워질수록 천천히</b> 올라가서, 나중엔 모두 비슷한 수준으로 모입니다.</p>
+      <ul>
+        <li><b>군사</b>가 높으면 점령을 잘하고, <b>외교</b>가 높으면 동맹을 잘 맺어요.</li>
+        <li><b>경제</b>가 높으면 자원이 많이 들어오고, <b>기술</b>이 높으면 점령에 도움 + 핵 개발 가능.</li>
+      </ul>
+
+      <h3>🤝 5. 다른 나라에게 하는 행동</h3>
+      <div class="mAct"><span class="cost">긴장↓</span><span class="nm">🤝 동맹 시도</span> — 중립·적동맹을 내 편으로. 평화롭고 안전하지만 외교가 낮으면 거절당해요.</div>
+      <div class="mAct"><span class="cost">긴장↑</span><span class="nm">⚔️ 점령 시도</span> — 힘으로 빼앗기. <b>이겨도 우리 군사·자원이 깎이고</b> 전쟁 피로가 쌓여요.</div>
+      <div class="mAct"><span class="cost">성공률↑</span><span class="nm">🕵️ 첩보 활동</span> — 상대의 진짜 능력치를 보고, 다음 동맹·점령 성공률을 올려요.</div>
+      <div class="mAct"><span class="cost">경제↓</span><span class="nm">📉 경제 제재</span> — 적국의 경제를 깎아 약하게 만들어요(전쟁 없이).</div>
+      <div class="mAct"><span class="cost">핵 -1</span><span class="nm">☢️ 핵 압박 사용</span> — 상대를 크게 약화(점령 직전엔 강력). 하지만 <b>전 세계가 반발</b>하고 점수가 크게 깎여요.</div>
+
+      <h3>🛠️ 6. 내 나라에 쓰는 행동</h3>
+      <div class="mAct"><span class="nm">🛡️ 방어 태세</span> — 이번 턴 적 공격을 잘 막아요.</div>
+      <div class="mAct"><span class="nm">🛠️ 국가 재정비</span> — <b>전쟁 피로도를 낮추고</b> 긴장을 완화. 많이 싸운 뒤 숨 고르기.</div>
+      <div class="mAct"><span class="nm">🕊️ 평화 회담</span> — 세계 긴장도를 크게 낮추고 외교를 올려요. 위기 때 구원투수.</div>
+      <div class="mAct"><span class="nm">🛡️ 동맹 강화</span> — 내 편 나라의 방어를 올리고 이탈을 막아요.</div>
+      <div class="mAct"><span class="cost">기술 필요</span><span class="nm">☢️ 핵무기 개발</span> — 강력한 억제력. <b>만들어 두는 것만으론 점수 손해 없음</b>(쏠 때만 손해).</div>
+
+      <h3>⚙️ 7. 꼭 알아둘 시스템</h3>
+      <ul>
+        <li><b>😣 전쟁 피로도</b>: 싸울수록 쌓여요. 높으면 실제 군사력이 약해지고 반란도 잘 나요. → 재정비로 풀기.</li>
+        <li><b>🕛 세계 긴장도 & ☢️ 파국</b>: 전쟁·핵은 긴장을 올려요. <b>긴장 100</b>이 되거나 핵을 너무 쓰면 <span class="em">「세계 파국 위기」</span>가 발동 — <b>3턴 안에 긴장을 80 아래로</b> 못 낮추면 패배!</li>
+        <li><b>🌏 지역 통합 보너스</b>: 같은 지역(아시아·유럽·아프리카·아메리카) 나라를 모두 내 편으로 만들면 보너스를 받아요.</li>
+        <li><b>⭐ 국가 고유 능력</b>: 나라마다 특기가 달라요(예: 대한민국=기술, 미국=초강대국, 영국=외교, 뉴질랜드=평화).</li>
+        <li><b>🚨 세계 저항 연합</b>: 거의 다 이기면 남은 나라들이 뭉쳐서 방어를 올리고 견제해요. 마지막 고비!</li>
+        <li><b>⚔️ AI끼리도 전쟁</b>해요. 강한 나라끼리 싸우면 둘 다 약해지니 그 틈을 노리세요.</li>
+      </ul>
+
+      <h3>🏁 8. 이기는 법 / 지는 법</h3>
+      <ul>
+        <li><b>승리</b>: 모든 나라가 내 편(동맹·점령)이 되면 세계 통일! 🎉</li>
+        <li><b>패배</b>: ① 자원이 바닥남, ② 적이 세계의 70%를 차지, ③ 파국 위기 때 긴장을 못 낮춤.</li>
+      </ul>
+
+      <h3>⭐ 9. 높은 점수(S등급) 비법</h3>
+      <p>점수는 이렇게 계산돼요:</p>
+      <div class="scoreBox">점수 = 동맹수×200 + 점령수×150 + 지역통합×300
+       + 남은자원×3 + 기술×2 + 경제×2
+       − 턴수×30 − 최종긴장도×10 − 핵사용×500 − 평균피로×5
+   (지면 점수 ×0.3)   S≥6000 · A≥4500 · B≥3000 · C≥1500</div>
+      <ul>
+        <li><b>① 무조건 이기기</b> — 지면 점수가 70%나 깎여요.</li>
+        <li><b>② 핵은 쏘지 않기</b> — 1발에 <b>−500</b>! (만들어 억제만 하는 건 괜찮아요.)</li>
+        <li><b>③ 점령보다 동맹으로</b> — 동맹 200 > 점령 150.</li>
+        <li><b>④ 기술·경제를 높게</b> — 각각 ×2라서 점수가 쑥쑥 올라요.</li>
+        <li><b>⑤ 긴장도·피로도 낮게, 너무 오래 끌지 않기.</b></li>
+      </ul>
+      <p>👉 한마디로: <span class="em">핵 안 쓰고, 동맹 위주로, 기술·경제 키우며, 평화롭게 빨리 통일!</span>
+         (핵 0발 + 동맹 60% 이상이면 <b>🌟 평화적 통합 특별 엔딩</b>까지 떠요.)</p>
+
+      <h3>💡 10. 꿀팁</h3>
+      <ul>
+        <li>처음엔 <b>외교·경제</b>를 먼저 키우면 동맹과 자원이 술술 풀려요.</li>
+        <li>점령은 <b>첩보</b>로 약점을 본 뒤 하면 성공률이 올라가요.</li>
+        <li>긴장도가 위험하면 망설이지 말고 <b>평화 회담</b>!</li>
+        <li>강한 적은 직접 싸우기보다 <b>경제 제재</b>로 먼저 약하게.</li>
+      </ul>
+
+      <p style="text-align:center;margin-top:16px;">
+        <button class="bigBtn" onclick="closeManual()">알겠어요! 시작하기 ▶</button>
+      </p>
+    </div>
+  </div>
+</div>
 
 <script>
 /* =======================================================================
@@ -1395,6 +1527,11 @@ async function showRankingScreen(){
   document.getElementById('overlay').classList.add('active');
   loadAndShowRanking(null);
 }
+
+/* 게임 설명서 열기/닫기 */
+function openManual(){ SFX.click(); document.getElementById('manualOverlay').classList.add('active'); }
+function closeManual(){ SFX.click(); document.getElementById('manualOverlay').classList.remove('active'); }
+document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeManual(); });
 
 /* =====================================================================
    21. 헤드리스 테스트용 노출(밸런스 시뮬이 접근). 게임 동작엔 영향 없음.
